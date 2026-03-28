@@ -2,25 +2,58 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var appState: AppState
+    @State private var tabToClose: Int?
+    @State private var showUnsavedAlert = false
 
     var body: some View {
         NavigationSplitView {
             SidebarView(appState: appState)
         } detail: {
-            if appState.activeTab != nil {
-                Text("Editor placeholder — \(appState.activeTab!.displayName)")
+            VStack(spacing: 0) {
+                if !appState.tabs.isEmpty {
+                    TabBarView(appState: appState, onClose: handleTabClose)
+                    Divider()
+                    if let tab = appState.activeTab {
+                        Text(tab.content)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .padding()
+                            .font(.body.monospaced())
+                    }
+                } else {
+                    ContentUnavailableView {
+                        Label("No File Open", systemImage: "doc.text")
+                    } description: {
+                        Text("Open a file from the sidebar or Finder")
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ContentUnavailableView {
-                    Label("No File Open", systemImage: "doc.text")
-                } description: {
-                    Text("Open a file from the sidebar or Finder")
                 }
             }
         }
         .frame(minWidth: 700, minHeight: 500)
-        .onAppear {
-            restoreLastFolder()
+        .onAppear { restoreLastFolder() }
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            handleDrop(providers)
+        }
+        .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
+            Button("Save") {
+                if let idx = tabToClose {
+                    appState.saveTab(appState.tabs[idx])
+                    appState.closeTab(at: idx)
+                }
+            }
+            Button("Don't Save", role: .destructive) {
+                if let idx = tabToClose { appState.closeTab(at: idx) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Do you want to save changes before closing?")
+        }
+    }
+
+    private func handleTabClose(at index: Int) {
+        if !appState.closeTabWithConfirmation(at: index) {
+            tabToClose = index
+            showUnsavedAlert = true
         }
     }
 
@@ -35,5 +68,22 @@ struct ContentView: View {
                 appState.fileTree = try FileTreeLoader.load(directory: url, markdownOnly: true)
             } catch {}
         }
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: "public.file-url") { data, _ in
+                guard let data = data as? Data,
+                      let urlString = String(data: data, encoding: .utf8),
+                      let url = URL(string: urlString) else { return }
+                let ext = url.pathExtension.lowercased()
+                if ["md", "markdown", "mdown", "mkd"].contains(ext) {
+                    DispatchQueue.main.async {
+                        appState.openFile(at: url)
+                    }
+                }
+            }
+        }
+        return true
     }
 }
