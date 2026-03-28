@@ -17,7 +17,11 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(appState: appState)
+            if appState.isSearching {
+                SearchPanel(appState: appState)
+            } else {
+                SidebarView(appState: appState)
+            }
         } detail: {
             VStack(spacing: 0) {
                 if !appState.tabs.isEmpty {

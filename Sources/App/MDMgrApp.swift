@@ -49,6 +49,13 @@ struct MDMgrApp: App {
                 .disabled(appState.activeTab == nil || !(appState.activeTab?.isDirty ?? false))
             }
 
+            CommandGroup(after: .textEditing) {
+                Button("Find in Folder") {
+                    appState.isSearching = true
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+            }
+
             CommandGroup(after: .windowArrangement) {
                 Button("Next Tab") {
                     if !appState.tabs.isEmpty {

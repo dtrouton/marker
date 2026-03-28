@@ -1,6 +1,7 @@
 import { sendToSwift, onSwiftMessage } from './bridge.js';
 import { showReader } from './reader.js';
 import { createEditor, destroyEditor, setupToolbar } from './editor.js';
+import { findInDocument, findNext, findPrevious, clearHighlights } from './search.js';
 import './styles.css';
 
 const readerEl = document.getElementById('reader');
@@ -58,5 +59,14 @@ document.addEventListener('keydown', (e) => {
         sendToSwift('requestRead');
     }
 });
+
+onSwiftMessage('search', (msg) => {
+    const count = findInDocument(msg.query);
+    sendToSwift('searchResult', { count });
+});
+
+onSwiftMessage('searchNext', () => findNext());
+onSwiftMessage('searchPrevious', () => findPrevious());
+onSwiftMessage('clearSearch', () => clearHighlights());
 
 sendToSwift('ready');
