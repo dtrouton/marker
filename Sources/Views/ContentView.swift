@@ -28,10 +28,7 @@ struct ContentView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
 
-                        Text(tab.content)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .padding()
-                            .font(.body.monospaced())
+                        MarkdownTextView(tab: tab)
                     }
                 } else {
                     ContentUnavailableView {
@@ -45,23 +42,35 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 500)
         .onAppear { restoreLastFolder() }
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in handleDrop(providers) }
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            handleDrop(providers)
+        }
         .sheet(isPresented: $appState.showExportSheet) {
-            if let tab = appState.activeTab { ExportSheet(tab: tab) }
+            if let tab = appState.activeTab {
+                ExportSheet(tab: tab)
+            }
         }
         .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
             Button("Save") {
-                if let idx = tabToClose { appState.saveTab(appState.tabs[idx]); appState.closeTab(at: idx) }
+                if let idx = tabToClose {
+                    appState.saveTab(appState.tabs[idx])
+                    appState.closeTab(at: idx)
+                }
             }
             Button("Don't Save", role: .destructive) {
                 if let idx = tabToClose { appState.closeTab(at: idx) }
             }
             Button("Cancel", role: .cancel) {}
-        } message: { Text("Do you want to save changes before closing?") }
+        } message: {
+            Text("Do you want to save changes before closing?")
+        }
     }
 
     private func handleTabClose(at index: Int) {
-        if !appState.closeTabWithConfirmation(at: index) { tabToClose = index; showUnsavedAlert = true }
+        if !appState.closeTabWithConfirmation(at: index) {
+            tabToClose = index
+            showUnsavedAlert = true
+        }
     }
 
     private func restoreLastFolder() {
@@ -71,17 +80,23 @@ struct ContentView: View {
         var isDir: ObjCBool = false
         if FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
             appState.folderURL = url
-            do { appState.fileTree = try FileTreeLoader.load(directory: url, markdownOnly: true) } catch {}
+            do {
+                appState.fileTree = try FileTreeLoader.load(directory: url, markdownOnly: true)
+            } catch {}
         }
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         for provider in providers {
             provider.loadItem(forTypeIdentifier: "public.file-url") { data, _ in
-                guard let data = data as? Data, let urlString = String(data: data, encoding: .utf8),
+                guard let data = data as? Data,
+                      let urlString = String(data: data, encoding: .utf8),
                       let url = URL(string: urlString) else { return }
-                if ["md", "markdown", "mdown", "mkd"].contains(url.pathExtension.lowercased()) {
-                    DispatchQueue.main.async { appState.openFile(at: url) }
+                let ext = url.pathExtension.lowercased()
+                if ["md", "markdown", "mdown", "mkd"].contains(ext) {
+                    DispatchQueue.main.async {
+                        appState.openFile(at: url)
+                    }
                 }
             }
         }

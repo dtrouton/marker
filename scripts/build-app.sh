@@ -29,17 +29,6 @@ sed \
     -e 's/$(MACOSX_DEPLOYMENT_TARGET)/14.0/g' \
     "$PROJECT_DIR/Sources/App/Info.plist" > "$CONTENTS_DIR/Info.plist"
 
-# Copy web editor bundle if it exists
-if [ -d "$PROJECT_DIR/Resources/WebEditor" ]; then
-    cp -R "$PROJECT_DIR/Resources/WebEditor" "$CONTENTS_DIR/Resources/WebEditor"
-fi
-
-# Copy SPM resource bundle if it exists (for Bundle.module compatibility)
-RESOURCE_BUNDLE="$BUILD_DIR/MDMgr_MDMgr.bundle"
-if [ -d "$RESOURCE_BUNDLE" ]; then
-    cp -R "$RESOURCE_BUNDLE" "$CONTENTS_DIR/Resources/MDMgr_MDMgr.bundle"
-fi
-
 # Create PkgInfo
 echo -n "APPL????" > "$CONTENTS_DIR/PkgInfo"
 
