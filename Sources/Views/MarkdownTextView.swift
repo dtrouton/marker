@@ -3,6 +3,7 @@ import AppKit
 
 struct MarkdownTextView: NSViewRepresentable {
     let tab: Tab
+    var themeVersion: Int = 0
     var onCoordinatorReady: ((Coordinator) -> Void)?
     @Binding var scrollPercentage: CGFloat
     @Binding var visiblePercentage: CGFloat
@@ -63,6 +64,11 @@ struct MarkdownTextView: NSViewRepresentable {
             applyContent(to: textView, tab: tab)
         }
 
+        if coordinator.lastThemeVersion != themeVersion {
+            coordinator.lastThemeVersion = themeVersion
+            applyContent(to: textView, tab: tab)
+        }
+
         if coordinator.lastContent != tab.content {
             coordinator.lastContent = tab.content
             if !coordinator.isLocalEdit {
@@ -120,6 +126,7 @@ struct MarkdownTextView: NSViewRepresentable {
         weak var scrollView: NSScrollView?
         var lastMode: TabMode?
         var lastContent: String?
+        var lastThemeVersion: Int = 0
         var isLocalEdit = false
         private var highlightTimer: Timer?
         private var scrollPercentageBinding: Binding<CGFloat>
