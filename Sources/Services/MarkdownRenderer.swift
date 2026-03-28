@@ -265,16 +265,36 @@ enum MarkdownRenderer {
             return stripped2.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
         }
 
-        for (i, line) in lines.enumerated() {
-            // Skip separator line
+        // Parse all data rows (skip separators)
+        var rows: [[String]] = []
+        for line in lines {
             if isTableSeparator(line) { continue }
+            rows.append(parseCells(line))
+        }
+        guard !rows.isEmpty else { return result }
 
-            let cells = parseCells(line)
+        // Calculate column widths
+        let colCount = rows.map(\.count).max() ?? 0
+        var widths = Array(repeating: 0, count: colCount)
+        for row in rows {
+            for (j, cell) in row.enumerated() where j < colCount {
+                widths[j] = max(widths[j], cell.count)
+            }
+        }
+
+        // Render rows with padded columns
+        for (i, row) in rows.enumerated() {
             let isHeader = (i == 0)
             let font = isHeader
                 ? NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)
                 : monoFont
-            let rowText = cells.joined(separator: "  │  ")
+
+            var paddedCells: [String] = []
+            for j in 0..<colCount {
+                let cell = j < row.count ? row[j] : ""
+                paddedCells.append(cell.padding(toLength: widths[j], withPad: " ", startingAt: 0))
+            }
+            let rowText = paddedCells.joined(separator: "  │  ")
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: font,
                 .foregroundColor: NSColor.labelColor,
@@ -282,6 +302,19 @@ enum MarkdownRenderer {
             ]
             if !result.string.isEmpty { result.append(NSAttributedString(string: "\n")) }
             result.append(NSAttributedString(string: rowText, attributes: attrs))
+
+            // Add separator line after header
+            if isHeader {
+                let sepParts = widths.map { String(repeating: "─", count: $0) }
+                let sepText = sepParts.joined(separator: "──┼──")
+                let sepAttrs: [NSAttributedString.Key: Any] = [
+                    .font: monoFont,
+                    .foregroundColor: NSColor.separatorColor,
+                    .paragraphStyle: para,
+                ]
+                result.append(NSAttributedString(string: "\n"))
+                result.append(NSAttributedString(string: sepText, attributes: sepAttrs))
+            }
         }
         return result
     }
