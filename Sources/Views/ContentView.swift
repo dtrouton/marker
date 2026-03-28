@@ -4,6 +4,16 @@ struct ContentView: View {
     @Bindable var appState: AppState
     @State private var tabToClose: Int?
     @State private var showUnsavedAlert = false
+    @State private var coordinators: [UUID: WebViewCoordinator] = [:]
+
+    private func coordinatorForTab(_ tab: Tab) -> WebViewCoordinator {
+        if let existing = coordinators[tab.id] {
+            return existing
+        }
+        let coordinator = WebViewCoordinator()
+        coordinators[tab.id] = coordinator
+        return coordinator
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -14,10 +24,19 @@ struct ContentView: View {
                     TabBarView(appState: appState, onClose: handleTabClose)
                     Divider()
                     if let tab = appState.activeTab {
-                        Text(tab.content)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            .padding()
-                            .font(.body.monospaced())
+                        HStack {
+                            Spacer()
+                            Button(tab.mode == .read ? "Edit" : "Done") {
+                                tab.mode = tab.mode == .read ? .edit : .read
+                            }
+                            .controlSize(.small)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+
+                        EditorWebView(tab: tab, coordinator: coordinatorForTab(tab)) { webView in
+                            appState.activeWebView = webView
+                        }
                     }
                 } else {
                     ContentUnavailableView {
