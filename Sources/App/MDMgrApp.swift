@@ -47,6 +47,12 @@ struct MDMgrApp: App {
                 }
                 .keyboardShortcut("s", modifiers: .command)
                 .disabled(appState.activeTab == nil || !(appState.activeTab?.isDirty ?? false))
+
+                Button("Export…") {
+                    appState.showExportSheet = true
+                }
+                .keyboardShortcut("e", modifiers: .command)
+                .disabled(appState.activeTab == nil)
             }
 
             CommandGroup(after: .textEditing) {

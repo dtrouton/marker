@@ -57,6 +57,11 @@ struct ContentView: View {
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers)
         }
+        .sheet(isPresented: $appState.showExportSheet) {
+            if let tab = appState.activeTab {
+                ExportSheet(tab: tab, webView: appState.activeWebView)
+            }
+        }
         .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
             Button("Save") {
                 if let idx = tabToClose {
