@@ -90,6 +90,7 @@ struct ContentView: View {
                 appState.fileTree = try FileTreeLoader.load(directory: url, markdownOnly: true)
             } catch {}
         }
+        appState.restoreTabs()
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {

@@ -3,7 +3,9 @@ import SwiftUI
 @Observable
 final class AppState {
     var tabs: [Tab] = []
-    var activeTabIndex: Int = 0
+    var activeTabIndex: Int = 0 {
+        didSet { saveTabs() }
+    }
     var folderURL: URL?
     var fileTree: [FileNode] = []
     var isSearching: Bool = false
@@ -27,6 +29,7 @@ final class AppState {
         let insertIndex = tabs.isEmpty ? 0 : activeTabIndex + 1
         tabs.insert(tab, at: insertIndex)
         activeTabIndex = insertIndex
+        saveTabs()
     }
 
     func closeTab(at index: Int) {
@@ -35,6 +38,7 @@ final class AppState {
         if tabs.isEmpty { activeTabIndex = 0 }
         else if activeTabIndex >= tabs.count { activeTabIndex = tabs.count - 1 }
         else if index < activeTabIndex { activeTabIndex -= 1 }
+        saveTabs()
     }
 
     func openFile(at url: URL) {
@@ -61,5 +65,24 @@ final class AppState {
         if tabs[index].isDirty { return false }
         closeTab(at: index)
         return true
+    }
+
+    func saveTabs() {
+        let paths = tabs.map { $0.fileURL.path }
+        UserDefaults.standard.set(paths, forKey: "openTabPaths")
+        UserDefaults.standard.set(activeTabIndex, forKey: "activeTabIndex")
+    }
+
+    func restoreTabs() {
+        guard let paths = UserDefaults.standard.stringArray(forKey: "openTabPaths") else { return }
+        for path in paths {
+            let url = URL(fileURLWithPath: path)
+            guard FileManager.default.fileExists(atPath: path) else { continue }
+            openFile(at: url)
+        }
+        let savedIndex = UserDefaults.standard.integer(forKey: "activeTabIndex")
+        if savedIndex >= 0 && savedIndex < tabs.count {
+            activeTabIndex = savedIndex
+        }
     }
 }
