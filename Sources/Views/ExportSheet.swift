@@ -1,10 +1,8 @@
 import SwiftUI
-import WebKit
 import UniformTypeIdentifiers
 
 struct ExportSheet: View {
     let tab: Tab
-    let webView: WKWebView?
     @Environment(\.dismiss) var dismiss
     @State private var selectedFormat: ExportFormat = .pdf
     @State private var isExporting = false
@@ -13,19 +11,17 @@ struct ExportSheet: View {
         VStack(spacing: 16) {
             Text("Export \(tab.displayName)")
                 .font(.headline)
-
             Picker("Format", selection: $selectedFormat) {
                 ForEach(ExportFormat.allCases, id: \.self) { format in
                     Text(format.rawValue).tag(format)
                 }
             }
             .pickerStyle(.segmented)
-
             HStack {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.escape)
                 Spacer()
-                Button("Export…") { export() }
+                Button("Export...") { export() }
                     .keyboardShortcut(.return)
                     .disabled(isExporting)
             }
@@ -40,17 +36,14 @@ struct ExportSheet: View {
         panel.nameFieldStringValue = tab.fileURL
             .deletingPathExtension()
             .lastPathComponent + (selectedFormat == .pdf ? ".pdf" : ".html")
-
         guard panel.runModal() == .OK, let url = panel.url else { return }
-
         isExporting = true
         Task {
             do {
                 switch selectedFormat {
                 case .pdf:
-                    if let webView {
-                        try await ExportService.exportPDF(from: webView, to: url)
-                    }
+                    let rendered = MarkdownRenderer.render(tab.content)
+                    try ExportService.exportPDF(content: rendered, to: url)
                 case .html:
                     try ExportService.exportHTML(content: tab.content, to: url)
                 }

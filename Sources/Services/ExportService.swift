@@ -1,4 +1,4 @@
-import WebKit
+import AppKit
 
 enum ExportFormat: String, CaseIterable {
     case pdf = "PDF"
@@ -6,10 +6,20 @@ enum ExportFormat: String, CaseIterable {
 }
 
 enum ExportService {
-    static func exportPDF(from webView: WKWebView, to url: URL) async throws {
-        let config = WKPDFConfiguration()
-        let data = try await webView.pdf(configuration: config)
-        try data.write(to: url)
+    static func exportPDF(content: NSAttributedString, to url: URL) throws {
+        let printInfo = NSPrintInfo()
+        printInfo.paperSize = NSSize(width: 612, height: 792)
+        printInfo.topMargin = 36
+        printInfo.bottomMargin = 36
+        printInfo.leftMargin = 36
+        printInfo.rightMargin = 36
+
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 540, height: 720))
+        textView.textStorage?.setAttributedString(content)
+        textView.sizeToFit()
+
+        let pdfData = textView.dataWithPDF(inside: textView.bounds)
+        try pdfData.write(to: url)
     }
 
     static func exportHTML(content: String, to url: URL) throws {

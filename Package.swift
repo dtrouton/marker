@@ -9,10 +9,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MDMgr",
-            path: "Sources",
-            resources: [
-                .copy("../Resources/WebEditor")
-            ]
+            path: "Sources"
         ),
         .testTarget(
             name: "MDMgrTests",
