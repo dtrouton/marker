@@ -17,9 +17,9 @@
 - [x] Table of contents sidebar — parse headings, clickable outline (Cmd+Shift+T)
 
 ## Nice to Have
-- [ ] Multiple window support
-- [ ] Minimap scroll overview
+- [x] Multiple window support (Cmd+N, independent state per window)
+- [x] Minimap scroll overview (Cmd+Shift+M to toggle)
 - [x] Git status indicators in sidebar (M/A/? with colors)
 - [x] Auto-save dirty tabs every 30 seconds
-- [ ] Custom CSS theme for read mode
+- [x] Custom themes — System, Serif, Mono, Compact (View > Theme menu)
 - [ ] Quick Look plugin for .md files in Finder
