@@ -131,6 +131,7 @@ enum MarkdownRenderer {
         para.paragraphSpacing = 4
         let base: [NSAttributedString.Key: Any] = [
             .font: font,
+            .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ]
         let result = NSMutableAttributedString(string: text, attributes: base)
@@ -145,7 +146,8 @@ enum MarkdownRenderer {
         para.tailIndent = -8
         let attrs: [NSAttributedString.Key: Any] = [
             .font: monoFont,
-            .backgroundColor: NSColor.gray.withAlphaComponent(0.15),
+            .foregroundColor: NSColor.labelColor,
+            .backgroundColor: NSColor.quaternaryLabelColor,
             .paragraphStyle: para,
         ]
         return NSAttributedString(string: code, attributes: attrs)
@@ -160,13 +162,13 @@ enum MarkdownRenderer {
         let result = NSMutableAttributedString()
         let bar = NSAttributedString(string: "┃ ", attributes: [
             .font: bodyFont,
-            .foregroundColor: NSColor.gray,
+            .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: para,
         ])
         result.append(bar)
         let body = NSMutableAttributedString(string: text, attributes: [
             .font: bodyFont,
-            .foregroundColor: NSColor.gray,
+            .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: para,
         ])
         applyInlineFormatting(body, baseFont: bodyFont)
@@ -180,10 +182,12 @@ enum MarkdownRenderer {
         para.firstLineHeadIndent = 4
         let bullet = NSAttributedString(string: "• ", attributes: [
             .font: bodyFont,
+            .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
         let body = NSMutableAttributedString(string: text, attributes: [
             .font: bodyFont,
+            .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
         applyInlineFormatting(body, baseFont: bodyFont)
@@ -199,10 +203,12 @@ enum MarkdownRenderer {
         para.firstLineHeadIndent = 4
         let prefix = NSAttributedString(string: "\(number). ", attributes: [
             .font: bodyFont,
+            .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
         let body = NSMutableAttributedString(string: text, attributes: [
             .font: bodyFont,
+            .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
         applyInlineFormatting(body, baseFont: bodyFont)
@@ -219,10 +225,12 @@ enum MarkdownRenderer {
         let checkbox = checked ? "☑ " : "☐ "
         let prefix = NSAttributedString(string: checkbox, attributes: [
             .font: bodyFont,
+            .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
         let body = NSMutableAttributedString(string: text, attributes: [
             .font: bodyFont,
+            .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
         applyInlineFormatting(body, baseFont: bodyFont)
@@ -282,6 +290,7 @@ enum MarkdownRenderer {
     private static func renderInline(_ text: String, baseFont: NSFont) -> NSAttributedString {
         let result = NSMutableAttributedString(string: text, attributes: [
             .font: baseFont,
+            .foregroundColor: NSColor.labelColor,
         ])
         applyInlineFormatting(result, baseFont: baseFont)
         return result
@@ -306,7 +315,8 @@ enum MarkdownRenderer {
             let mono = NSFont.monospacedSystemFont(ofSize: baseFont.pointSize - 1, weight: .regular)
             return NSAttributedString(string: code, attributes: [
                 .font: mono,
-                .backgroundColor: NSColor.gray.withAlphaComponent(0.15),
+                .foregroundColor: NSColor.labelColor,
+                .backgroundColor: NSColor.quaternaryLabelColor,
             ])
         }
 
@@ -329,38 +339,38 @@ enum MarkdownRenderer {
             var font = baseFont
             font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
             font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask)
-            return NSAttributedString(string: inner, attributes: [.font: font])
+            return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
         applyPattern(attrStr, pattern: #"___(.+?)___"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             var font = baseFont
             font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
             font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask)
-            return NSAttributedString(string: inner, attributes: [.font: font])
+            return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
 
         // 5. Bold: **text** or __text__
         applyPattern(attrStr, pattern: #"\*\*(.+?)\*\*"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             let font = NSFontManager.shared.convert(baseFont, toHaveTrait: .boldFontMask)
-            return NSAttributedString(string: inner, attributes: [.font: font])
+            return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
         applyPattern(attrStr, pattern: #"__(.+?)__"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             let font = NSFontManager.shared.convert(baseFont, toHaveTrait: .boldFontMask)
-            return NSAttributedString(string: inner, attributes: [.font: font])
+            return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
 
         // 6. Italic: *text* or _text_ — must NOT match inside ** or __
         applyPattern(attrStr, pattern: #"(?<!\*)\*([^*]+?)\*(?!\*)"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             let font = NSFontManager.shared.convert(baseFont, toHaveTrait: .italicFontMask)
-            return NSAttributedString(string: inner, attributes: [.font: font])
+            return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
         applyPattern(attrStr, pattern: #"(?<!_)_([^_]+?)_(?!_)"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             let font = NSFontManager.shared.convert(baseFont, toHaveTrait: .italicFontMask)
-            return NSAttributedString(string: inner, attributes: [.font: font])
+            return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
     }
 
