@@ -14,9 +14,6 @@ struct MDMgrApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .onOpenURL { url in
-                    appState?.openFile(at: url)
-                }
         }
         .commands {
             CommandGroup(replacing: .newItem) {

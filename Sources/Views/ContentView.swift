@@ -73,6 +73,9 @@ struct ContentView: View {
         }
         .focusedSceneValue(\.appState, appState)
         .frame(minWidth: 700, minHeight: 500)
+        .onOpenURL { url in
+            appState.openFile(at: url)
+        }
         .onAppear { restoreLastFolder() }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers)
