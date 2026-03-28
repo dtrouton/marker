@@ -412,9 +412,48 @@
         }
     }
 
+    // ===== Undo/Redo Stack =====
+    var undoStack = [];
+    var redoStack = [];
+    var lastSnapshot = null;
+
+    function saveSnapshot() {
+        var snap = { text: editArea.value, start: editArea.selectionStart, end: editArea.selectionEnd };
+        if (lastSnapshot && lastSnapshot.text === snap.text) return;
+        undoStack.push(snap);
+        if (undoStack.length > 200) undoStack.shift();
+        redoStack = [];
+        lastSnapshot = snap;
+    }
+
+    function doUndo() {
+        if (undoStack.length === 0) return;
+        var current = { text: editArea.value, start: editArea.selectionStart, end: editArea.selectionEnd };
+        redoStack.push(current);
+        var snap = undoStack.pop();
+        editArea.value = snap.text;
+        editArea.selectionStart = snap.start;
+        editArea.selectionEnd = snap.end;
+        lastSnapshot = snap;
+        notifyChange();
+    }
+
+    function doRedo() {
+        if (redoStack.length === 0) return;
+        var current = { text: editArea.value, start: editArea.selectionStart, end: editArea.selectionEnd };
+        undoStack.push(current);
+        var snap = redoStack.pop();
+        editArea.value = snap.text;
+        editArea.selectionStart = snap.start;
+        editArea.selectionEnd = snap.end;
+        lastSnapshot = snap;
+        notifyChange();
+    }
+
     // ===== Tab Handling =====
     function handleTabKey(e) {
         e.preventDefault();
+        saveSnapshot();
         var ta = editArea;
         var start = ta.selectionStart;
         var end = ta.selectionEnd;
@@ -605,11 +644,24 @@
     });
 
     editArea.addEventListener('keydown', function(e) {
+        // Undo: Cmd+Z
+        if (e.key === 'z' && e.metaKey && !e.shiftKey) {
+            e.preventDefault();
+            doUndo();
+            return;
+        }
+        // Redo: Cmd+Shift+Z
+        if (e.key === 'z' && e.metaKey && e.shiftKey) {
+            e.preventDefault();
+            doRedo();
+            return;
+        }
         if (e.key === 'Tab' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
             handleTabKey(e);
             return;
         }
         if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            saveSnapshot();
             handleEnterKey(e);
             return;
         }
@@ -617,21 +669,102 @@
         handleAutoClose(e);
     });
 
+    // Save undo snapshots periodically on normal typing
+    var typingTimer = null;
+    editArea.addEventListener('beforeinput', function() {
+        if (!typingTimer) {
+            saveSnapshot();
+        }
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(function() { typingTimer = null; }, 500);
+    });
+
     readerEl.addEventListener('dblclick', function(){sendToSwift('requestEdit');});
     document.addEventListener('keydown', function(e) {
         if (e.key==='Escape' && currentMode==='edit') sendToSwift('requestRead');
     });
 
+    // Toggle wrapper: if selection is already wrapped with prefix/suffix, remove them; otherwise add them
+    function toggleWrap(prefix, suffix) {
+        saveSnapshot();
+        var ta = editArea, val = ta.value;
+        var s = ta.selectionStart, end = ta.selectionEnd;
+        var sel = val.substring(s, end);
+        var pLen = prefix.length, sLen = suffix.length;
+
+        // Check if selection itself is wrapped: **bold** with ** selected as part of it
+        if (sel.length >= pLen + sLen && sel.startsWith(prefix) && sel.endsWith(suffix)) {
+            // Remove inner wrapping
+            ta.setRangeText(sel.substring(pLen, sel.length - sLen), s, end, 'end');
+            ta.selectionStart = s;
+            ta.selectionEnd = end - pLen - sLen;
+            notifyChange();
+            return;
+        }
+
+        // Check if text AROUND selection is the wrapper
+        var before = val.substring(s - pLen, s);
+        var after = val.substring(end, end + sLen);
+        if (before === prefix && after === suffix) {
+            // Remove wrapping around selection
+            ta.setRangeText(sel, s - pLen, end + sLen, 'end');
+            ta.selectionStart = s - pLen;
+            ta.selectionEnd = s - pLen + sel.length;
+            notifyChange();
+            return;
+        }
+
+        // Add wrapping
+        ta.setRangeText(prefix + sel + suffix, s, end, 'end');
+        ta.selectionStart = s + pLen;
+        ta.selectionEnd = s + pLen + sel.length;
+        notifyChange();
+    }
+
+    // Line prefix toggle: if line already has prefix, remove it; otherwise add it
+    function toggleLinePrefix(prefix) {
+        saveSnapshot();
+        var ta = editArea, val = ta.value;
+        var s = ta.selectionStart;
+        var lineStart = val.lastIndexOf('\n', s - 1) + 1;
+        var lineEnd = val.indexOf('\n', s);
+        if (lineEnd === -1) lineEnd = val.length;
+        var line = val.substring(lineStart, lineEnd);
+
+        if (line.startsWith(prefix)) {
+            // Remove prefix
+            ta.setRangeText(line.substring(prefix.length), lineStart, lineEnd, 'end');
+        } else {
+            // Add prefix
+            ta.setRangeText(prefix + line, lineStart, lineEnd, 'end');
+        }
+        notifyChange();
+    }
+
     toolbarEl.addEventListener('click', function(e) {
         var btn = e.target.closest('button'); if (!btn) return;
-        var a = btn.dataset.action, s = editArea.selectionStart, end = editArea.selectionEnd;
-        var sel = editArea.value.substring(s, end), r = sel;
-        if(a==='bold')r='**'+sel+'**'; else if(a==='italic')r='*'+sel+'*';
-        else if(a==='h1')r='# '+sel; else if(a==='h2')r='## '+sel; else if(a==='h3')r='### '+sel;
-        else if(a==='bullet')r='- '+sel; else if(a==='ordered')r='1. '+sel;
-        else if(a==='code')r='`'+sel+'`'; else if(a==='quote')r='> '+sel;
-        else if(a==='link')r='['+sel+'](url)'; else if(a==='hr')r='\n---\n';
-        editArea.setRangeText(r, s, end, 'end');
+        var a = btn.dataset.action;
+        editArea.focus();
+
+        if (a === 'bold') { toggleWrap('**', '**'); return; }
+        if (a === 'italic') { toggleWrap('*', '*'); return; }
+        if (a === 'code') { toggleWrap('`', '`'); return; }
+        if (a === 'h1') { toggleLinePrefix('# '); return; }
+        if (a === 'h2') { toggleLinePrefix('## '); return; }
+        if (a === 'h3') { toggleLinePrefix('### '); return; }
+        if (a === 'bullet') { toggleLinePrefix('- '); return; }
+        if (a === 'ordered') { toggleLinePrefix('1. '); return; }
+        if (a === 'quote') { toggleLinePrefix('> '); return; }
+
+        // Non-toggleable actions
+        saveSnapshot();
+        var s = editArea.selectionStart, end = editArea.selectionEnd;
+        var sel = editArea.value.substring(s, end);
+        if (a === 'link') {
+            editArea.setRangeText('[' + sel + '](url)', s, end, 'end');
+        } else if (a === 'hr') {
+            editArea.setRangeText('\n---\n', s, end, 'end');
+        }
         notifyChange();
     });
 
