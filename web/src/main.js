@@ -1,5 +1,6 @@
 import { sendToSwift, onSwiftMessage } from './bridge.js';
 import { showReader } from './reader.js';
+import { createEditor, destroyEditor, setupToolbar } from './editor.js';
 import './styles.css';
 
 const readerEl = document.getElementById('reader');
@@ -9,6 +10,8 @@ const toolbarEl = document.getElementById('toolbar');
 let currentMode = 'read';
 let currentContent = '';
 
+setupToolbar(toolbarEl);
+
 onSwiftMessage('loadContent', (msg) => {
     currentContent = msg.content;
     if (currentMode === 'read') {
@@ -16,9 +19,10 @@ onSwiftMessage('loadContent', (msg) => {
     }
 });
 
-onSwiftMessage('setMode', (msg) => {
+onSwiftMessage('setMode', async (msg) => {
     currentMode = msg.mode;
     if (currentMode === 'read') {
+        await destroyEditor();
         showReader(readerEl, currentContent);
         readerEl.classList.remove('hidden');
         editorEl.classList.add('hidden');
@@ -27,8 +31,15 @@ onSwiftMessage('setMode', (msg) => {
         readerEl.classList.add('hidden');
         editorEl.classList.remove('hidden');
         toolbarEl.classList.remove('hidden');
-        // Milkdown editor activation added in Task 8
+        await createEditor(editorEl, currentContent, (markdown) => {
+            currentContent = markdown;
+            sendToSwift('contentChanged', { content: markdown });
+        });
     }
+});
+
+onSwiftMessage('getContent', () => {
+    sendToSwift('contentResult', { content: currentContent });
 });
 
 onSwiftMessage('setBaseURL', (msg) => {
@@ -40,6 +51,12 @@ onSwiftMessage('setBaseURL', (msg) => {
 
 readerEl.addEventListener('dblclick', () => {
     sendToSwift('requestEdit');
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && currentMode === 'edit') {
+        sendToSwift('requestRead');
+    }
 });
 
 sendToSwift('ready');
