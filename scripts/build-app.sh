@@ -20,12 +20,24 @@ mkdir -p "$CONTENTS_DIR/Resources"
 # Copy binary
 cp "$BUILD_DIR/MDMgr" "$CONTENTS_DIR/MacOS/MD Mgr"
 
-# Copy Info.plist
-cp "$PROJECT_DIR/Sources/App/Info.plist" "$CONTENTS_DIR/Info.plist"
+# Copy Info.plist and resolve Xcode build variables for SPM
+sed \
+    -e 's/$(EXECUTABLE_NAME)/MD Mgr/g' \
+    -e 's/$(PRODUCT_BUNDLE_IDENTIFIER)/com.mdmgr.app/g' \
+    -e 's/$(CURRENT_PROJECT_VERSION)/1/g' \
+    -e 's/$(MARKETING_VERSION)/1.0.0/g' \
+    -e 's/$(MACOSX_DEPLOYMENT_TARGET)/14.0/g' \
+    "$PROJECT_DIR/Sources/App/Info.plist" > "$CONTENTS_DIR/Info.plist"
 
 # Copy web editor bundle if it exists
 if [ -d "$PROJECT_DIR/Resources/WebEditor" ]; then
     cp -R "$PROJECT_DIR/Resources/WebEditor" "$CONTENTS_DIR/Resources/WebEditor"
+fi
+
+# Copy SPM resource bundle if it exists (for Bundle.module compatibility)
+RESOURCE_BUNDLE="$BUILD_DIR/MDMgr_MDMgr.bundle"
+if [ -d "$RESOURCE_BUNDLE" ]; then
+    cp -R "$RESOURCE_BUNDLE" "$CONTENTS_DIR/Resources/MDMgr_MDMgr.bundle"
 fi
 
 # Create PkgInfo
