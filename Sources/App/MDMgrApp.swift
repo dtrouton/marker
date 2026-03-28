@@ -61,6 +61,14 @@ struct MDMgrApp: App {
                 .disabled(appState.activeTab == nil)
             }
 
+            CommandGroup(before: .textEditing) {
+                Button("Quick Open") {
+                    appState.showQuickOpen = true
+                }
+                .keyboardShortcut("p", modifiers: .command)
+                .disabled(appState.folderURL == nil)
+            }
+
             CommandGroup(after: .textEditing) {
                 Button("Find…") {
                     NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: findPanelSender(action: .showFindPanel))

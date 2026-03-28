@@ -56,6 +56,21 @@ struct ContentView: View {
                 ExportSheet(tab: tab)
             }
         }
+        .overlay {
+            if appState.showQuickOpen {
+                ZStack {
+                    Color.black.opacity(0.2)
+                        .ignoresSafeArea()
+                        .onTapGesture { appState.showQuickOpen = false }
+
+                    VStack {
+                        QuickOpenPanel(appState: appState)
+                            .padding(.top, 40)
+                        Spacer()
+                    }
+                }
+            }
+        }
         .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
             Button("Save") {
                 if let idx = tabToClose {

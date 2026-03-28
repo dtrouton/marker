@@ -11,6 +11,7 @@ final class AppState {
     var isSearching: Bool = false
     var searchQuery: String = ""
     var showExportSheet: Bool = false
+    var showQuickOpen: Bool = false
 
     @ObservationIgnored
     @AppStorage("lastFolderPath") var lastFolderPath: String = ""
