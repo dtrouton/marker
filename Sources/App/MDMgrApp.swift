@@ -75,6 +75,33 @@ struct MDMgrApp: App {
                 }
                 .keyboardShortcut("e", modifiers: .command)
                 .disabled(appState.activeTab == nil)
+
+                Divider()
+
+                Button("Print…") {
+                    guard let tab = appState.activeTab else { return }
+                    let rendered = MarkdownRenderer.render(
+                        tab.content,
+                        baseURL: tab.fileURL.deletingLastPathComponent()
+                    )
+
+                    let printInfo = NSPrintInfo.shared
+                    printInfo.topMargin = 36
+                    printInfo.bottomMargin = 36
+                    printInfo.leftMargin = 36
+                    printInfo.rightMargin = 36
+
+                    let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 540, height: 720))
+                    textView.textStorage?.setAttributedString(rendered)
+                    textView.sizeToFit()
+
+                    let printOp = NSPrintOperation(view: textView, printInfo: printInfo)
+                    printOp.showsPrintPanel = true
+                    printOp.showsProgressPanel = true
+                    printOp.run()
+                }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+                .disabled(appState.activeTab == nil)
             }
 
             CommandGroup(before: .textEditing) {
