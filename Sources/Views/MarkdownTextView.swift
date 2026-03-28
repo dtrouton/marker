@@ -24,6 +24,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.usesFontPanel = false
         textView.isAutomaticLinkDetectionEnabled = true
         textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.usesFindBar = true
         textView.textContainerInset = NSSize(width: 32, height: 24)
         textView.drawsBackground = false
         textView.isVerticallyResizable = true
@@ -61,6 +62,17 @@ struct MarkdownTextView: NSViewRepresentable {
     }
 
     private func applyContent(to textView: NSTextView, tab: Tab) {
+        // Save scroll position as a percentage so it survives content-height changes
+        // between read mode (rendered) and edit mode (raw markdown).
+        let scrollView = textView.enclosingScrollView
+        let scrollPercentage: CGFloat = {
+            guard let sv = scrollView,
+                  let docView = sv.documentView else { return 0 }
+            let contentHeight = docView.frame.height
+            let scrollOffset = sv.contentView.bounds.origin.y
+            return contentHeight > 0 ? scrollOffset / contentHeight : 0
+        }()
+
         if tab.mode == .read {
             textView.isEditable = false
             textView.isSelectable = true
@@ -79,6 +91,15 @@ struct MarkdownTextView: NSViewRepresentable {
                 MarkdownSyntaxHighlighter.highlight(storage)
             }
             textView.setSelectedRange(NSRange(location: 0, length: 0))
+        }
+
+        // Restore scroll position using the saved percentage.
+        if let sv = scrollView {
+            textView.layoutManager?.ensureLayout(for: textView.textContainer!)
+            let newContentHeight = sv.documentView?.frame.height ?? 0
+            let newOffset = scrollPercentage * newContentHeight
+            sv.contentView.scroll(to: NSPoint(x: 0, y: newOffset))
+            sv.reflectScrolledClipView(sv.contentView)
         }
     }
 
