@@ -46,7 +46,26 @@ final class AppState {
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
             openTab(fileURL: url, content: content)
+            addToRecentFiles(url)
         } catch {}
+    }
+
+    // MARK: - Recent Files
+
+    func addToRecentFiles(_ url: URL) {
+        var recents = UserDefaults.standard.stringArray(forKey: "recentFiles") ?? []
+        recents.removeAll { $0 == url.path }
+        recents.insert(url.path, at: 0)
+        if recents.count > 10 { recents = Array(recents.prefix(10)) }
+        UserDefaults.standard.set(recents, forKey: "recentFiles")
+    }
+
+    var recentFiles: [URL] {
+        let paths = UserDefaults.standard.stringArray(forKey: "recentFiles") ?? []
+        return paths.compactMap { path in
+            let url = URL(fileURLWithPath: path)
+            return FileManager.default.fileExists(atPath: path) ? url : nil
+        }
     }
 
     func saveActiveTab() {

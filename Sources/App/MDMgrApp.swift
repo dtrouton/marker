@@ -47,6 +47,22 @@ struct MDMgrApp: App {
                 .keyboardShortcut("o", modifiers: [.command, .shift])
             }
 
+            CommandGroup(after: .newItem) {
+                Menu("Recent Files") {
+                    ForEach(appState.recentFiles, id: \.path) { url in
+                        Button(url.lastPathComponent) {
+                            appState.openFile(at: url)
+                        }
+                    }
+                    if !appState.recentFiles.isEmpty {
+                        Divider()
+                        Button("Clear Recent Files") {
+                            UserDefaults.standard.removeObject(forKey: "recentFiles")
+                        }
+                    }
+                }
+            }
+
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
                     appState.saveActiveTab()
