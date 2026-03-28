@@ -12,8 +12,12 @@ targets:
     platform: macOS
     sources:
       - path: Sources
+        excludes:
+          - QuickLookExtension/**
     resources:
       - path: Resources
+    dependencies:
+      - target: MarkerQuickLook
     settings:
       base:
         PRODUCT_NAME: Marker
@@ -26,6 +30,23 @@ targets:
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""
+
+  MarkerQuickLook:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Sources/QuickLookExtension
+    settings:
+      base:
+        PRODUCT_NAME: MarkerQuickLook
+        PRODUCT_BUNDLE_IDENTIFIER: com.marker.app.quicklook
+        INFOPLIST_FILE: Sources/QuickLookExtension/Info.plist
+        SWIFT_VERSION: "5.10"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
 
   MDMgrTests:
     type: bundle.unit-test
