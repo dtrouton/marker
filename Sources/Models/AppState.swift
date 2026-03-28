@@ -15,6 +15,7 @@ final class AppState {
     var showExportSheet: Bool = false
     var showQuickOpen: Bool = false
     var showTableOfContents: Bool = false
+    var gitStatus: [URL: GitFileStatus] = [:]
 
     @ObservationIgnored
     @AppStorage("lastFolderPath") var lastFolderPath: String = ""
@@ -122,6 +123,18 @@ final class AppState {
         let savedIndex = UserDefaults.standard.integer(forKey: "activeTabIndex")
         if savedIndex >= 0 && savedIndex < tabs.count {
             activeTabIndex = savedIndex
+        }
+    }
+
+    // MARK: - Git Status
+
+    func refreshGitStatus() {
+        guard let folder = folderURL else { return }
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let status = GitStatusService.status(in: folder)
+            DispatchQueue.main.async {
+                self?.gitStatus = status
+            }
         }
     }
 }

@@ -24,7 +24,7 @@ struct SidebarView: View {
                     }
                 )) {
                     ForEach(appState.fileTree, id: \.id) { node in
-                        FileNodeRow(node: node)
+                        FileNodeRow(node: node, gitStatus: appState.gitStatus)
                     }
                 }
                 .listStyle(.sidebar)
@@ -39,6 +39,7 @@ struct SidebarView: View {
                 do {
                     state.fileTree = try FileTreeLoader.load(directory: url, markdownOnly: true)
                 } catch {}
+                state.refreshGitStatus()
             }
             watcher?.start()
         }
@@ -63,6 +64,7 @@ struct SidebarView: View {
             appState.folderURL = url
             appState.lastFolderPath = url.path
             reloadTree()
+            appState.refreshGitStatus()
         }
     }
 
@@ -78,19 +80,45 @@ struct SidebarView: View {
 
 struct FileNodeRow: View {
     let node: FileNode
+    let gitStatus: [URL: GitFileStatus]
 
     var body: some View {
         if node.isDirectory {
             DisclosureGroup {
                 ForEach(node.sortedChildren, id: \.id) { child in
-                    FileNodeRow(node: child)
+                    FileNodeRow(node: child, gitStatus: gitStatus)
                 }
             } label: {
                 Label(node.name, systemImage: "folder")
             }
         } else {
-            Label(node.name, systemImage: "doc.text")
-                .tag(node.url)
+            HStack {
+                Label(node.name, systemImage: "doc.text")
+                Spacer()
+                if let status = gitStatus[node.url] {
+                    Text(statusLabel(status))
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundColor(statusColor(status))
+                }
+            }
+            .tag(node.url)
+        }
+    }
+
+    private func statusLabel(_ status: GitFileStatus) -> String {
+        switch status {
+        case .modified: return "M"
+        case .added: return "A"
+        case .untracked: return "?"
+        }
+    }
+
+    private func statusColor(_ status: GitFileStatus) -> Color {
+        switch status {
+        case .modified: return .orange
+        case .added: return .green
+        case .untracked: return .gray
         }
     }
 }
