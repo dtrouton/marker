@@ -22,4 +22,4 @@
 - [x] Git status indicators in sidebar (M/A/? with colors)
 - [x] Auto-save dirty tabs every 30 seconds
 - [x] Custom themes — System, Serif, Mono, Compact (View > Theme menu)
-- [ ] Quick Look plugin for .md files in Finder
+- [x] Quick Look plugin for .md files in Finder (build with --xcode flag)
