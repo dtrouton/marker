@@ -35,6 +35,7 @@ struct ContentView: View {
                         MarkdownTextView(tab: tab, onCoordinatorReady: { coord in
                             editorCoordinator = coord
                         })
+                        StatusBar(content: tab.content)
                     }
                 } else {
                     ContentUnavailableView {
