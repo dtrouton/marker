@@ -6,10 +6,6 @@ struct EditorWebView: NSViewRepresentable {
     let coordinator: WebViewCoordinator
     var onWebViewCreated: ((WKWebView) -> Void)?
 
-    /// Locate the WebEditor bundle directory at runtime.
-    /// SPM executable targets may not generate Bundle.module, so we search
-    /// multiple locations: the main bundle, next to the executable, and
-    /// the original Resources/ directory for development runs.
     static func findWebEditorBundle() -> URL? {
         // 1. Bundle.main resources (works when run as .app)
         if let url = Bundle.main.url(forResource: "WebEditor", withExtension: nil) {
@@ -21,7 +17,7 @@ struct EditorWebView: NSViewRepresentable {
                 return candidate
             }
         }
-        // 2. Next to the executable (SPM debug builds put resources alongside the binary)
+        // 2. Next to the executable (SPM builds)
         let execURL = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
         let candidates = [
             execURL.appendingPathComponent("MDMgr_MDMgr.bundle/WebEditor"),
@@ -32,10 +28,8 @@ struct EditorWebView: NSViewRepresentable {
                 return candidate
             }
         }
-        // 3. Development fallback: look relative to the source tree
-        let devPath = execURL
-            .deletingLastPathComponent() // .build
-            .deletingLastPathComponent() // .build parent = project root
+        // 3. Development fallback: source tree
+        let devPath = execURL.deletingLastPathComponent().deletingLastPathComponent()
         let devCandidate = devPath.appendingPathComponent("Resources/WebEditor")
         if FileManager.default.fileExists(atPath: devCandidate.path) {
             return devCandidate
@@ -49,11 +43,9 @@ struct EditorWebView: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
+        webView.isInspectable = true
 
-        // Load the web editor bundle
-        let resourceURL: URL? = EditorWebView.findWebEditorBundle()
-
-        if let resourceURL = resourceURL {
+        if let resourceURL = EditorWebView.findWebEditorBundle() {
             let indexURL = resourceURL.appendingPathComponent("index.html")
             webView.loadFileURL(indexURL, allowingReadAccessTo: resourceURL)
         }

@@ -4,29 +4,239 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MD Mgr Editor</title>
-  <script type="module" src="./assets/index-bnIoh1lU.js"></script>
-  <link rel="stylesheet" href="./assets/index-CpvLPjqK.css">
+    <style>
+        :root {
+            --bg: #ffffff; --fg: #1d1d1f; --secondary: #86868b;
+            --border: #d2d2d7; --code-bg: #f5f5f7; --accent: #007aff;
+            --toolbar-bg: #f5f5f7;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1d1d1f; --fg: #f5f5f7; --secondary: #86868b;
+                --border: #424245; --code-bg: #2c2c2e; --accent: #0a84ff;
+                --toolbar-bg: #2c2c2e;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+               font-size: 15px; line-height: 1.6; color: var(--fg); background: var(--bg); }
+        .hidden { display: none !important; }
+        .toolbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center;
+                   gap: 2px; padding: 4px 8px; background: var(--toolbar-bg);
+                   border-bottom: 1px solid var(--border); }
+        .toolbar button { background: none; border: 1px solid transparent; border-radius: 4px;
+                          padding: 4px 8px; font-size: 13px; color: var(--fg); cursor: pointer;
+                          min-width: 28px; text-align: center; }
+        .toolbar button:hover { background: var(--border); }
+        .toolbar .separator { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+        .reader { padding: 24px 32px; max-width: 800px; margin: 0 auto; }
+        .reader h1 { font-size: 2em; margin: 0.8em 0 0.4em; font-weight: 700; }
+        .reader h2 { font-size: 1.5em; margin: 0.8em 0 0.4em; font-weight: 600; }
+        .reader h3 { font-size: 1.2em; margin: 0.8em 0 0.4em; font-weight: 600; }
+        .reader h4 { font-size: 1em; margin: 0.8em 0 0.4em; font-weight: 600; }
+        .reader p { margin: 0.6em 0; }
+        .reader a { color: var(--accent); text-decoration: none; }
+        .reader a:hover { text-decoration: underline; }
+        .reader code { font-family: 'SF Mono', Menlo, monospace; font-size: 0.9em;
+                       background: var(--code-bg); padding: 2px 6px; border-radius: 4px; }
+        .reader pre { background: var(--code-bg); border-radius: 8px; padding: 16px;
+                      overflow-x: auto; margin: 1em 0; }
+        .reader pre code { background: none; padding: 0; font-size: 13px; line-height: 1.5; }
+        .reader blockquote { border-left: 3px solid var(--accent); padding-left: 16px;
+                             color: var(--secondary); margin: 1em 0; }
+        .reader table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+        .reader th, .reader td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+        .reader th { background: var(--code-bg); font-weight: 600; }
+        .reader ul, .reader ol { padding-left: 24px; margin: 0.6em 0; }
+        .reader li { margin: 0.3em 0; }
+        .reader hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+        .reader img { max-width: 100%; border-radius: 8px; margin: 1em 0; }
+        .editor { padding: 24px 32px; max-width: 800px; margin: 0 auto; min-height: 100vh; }
+        .editor textarea { width: 100%; min-height: 80vh; border: none; outline: none;
+                           font-family: 'SF Mono', Menlo, monospace; font-size: 14px;
+                           line-height: 1.6; color: var(--fg); background: var(--bg); resize: none; }
+    </style>
 </head>
 <body>
     <div id="toolbar" class="toolbar hidden">
-        <button data-action="bold" title="Bold (⌘B)"><b>B</b></button>
-        <button data-action="italic" title="Italic (⌘I)"><i>I</i></button>
+        <button data-action="bold" title="Bold"><b>B</b></button>
+        <button data-action="italic" title="Italic"><i>I</i></button>
         <span class="separator"></span>
-        <button data-action="h1" title="Heading 1">H1</button>
-        <button data-action="h2" title="Heading 2">H2</button>
-        <button data-action="h3" title="Heading 3">H3</button>
+        <button data-action="h1">H1</button>
+        <button data-action="h2">H2</button>
+        <button data-action="h3">H3</button>
         <span class="separator"></span>
-        <button data-action="bullet" title="Bullet List">&#8226;</button>
-        <button data-action="ordered" title="Numbered List">1.</button>
-        <button data-action="task" title="Task List">&#9744;</button>
+        <button data-action="bullet">&#8226;</button>
+        <button data-action="ordered">1.</button>
         <span class="separator"></span>
-        <button data-action="code" title="Code">&lt;/&gt;</button>
-        <button data-action="codeBlock" title="Code Block">{ }</button>
-        <button data-action="quote" title="Block Quote">&ldquo;</button>
-        <button data-action="link" title="Link (⌘K)">Link</button>
-        <button data-action="hr" title="Horizontal Rule">&mdash;</button>
+        <button data-action="code">&lt;/&gt;</button>
+        <button data-action="quote">&ldquo;</button>
+        <button data-action="link">Link</button>
+        <button data-action="hr">&mdash;</button>
     </div>
     <div id="reader" class="reader"></div>
-    <div id="editor" class="editor hidden"></div>
+    <div id="editor" class="editor hidden"><textarea id="editArea"></textarea></div>
+
+    <script>
+    // Lightweight markdown renderer (no dependencies)
+    // Note: innerHTML is used with content from local markdown files only (not user-supplied web content).
+    // The app only opens files the user explicitly selects from their local filesystem.
+    function renderMarkdown(md) {
+        var codeBlocks = [];
+        md = md.replace(/```(\w*)\n([\s\S]*?)```/g, function(m, lang, code) {
+            var i = codeBlocks.length;
+            codeBlocks.push('<pre><code>' + code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</code></pre>');
+            return '\x00CB' + i + '\x00';
+        });
+        var inlineCodes = [];
+        md = md.replace(/`([^`]+)`/g, function(m, code) {
+            var i = inlineCodes.length;
+            inlineCodes.push('<code>' + code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</code>');
+            return '\x00IC' + i + '\x00';
+        });
+
+        var lines = md.split('\n'), html = [], inList = false, inTable = false;
+        for (var idx = 0; idx < lines.length; idx++) {
+            var line = lines[idx];
+            var cbMatch = line.match(/^\x00CB(\d+)\x00$/);
+            if (cbMatch) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                if (inTable) { html.push('</table>'); inTable = false; }
+                html.push(codeBlocks[parseInt(cbMatch[1])]); continue;
+            }
+            var hMatch = line.match(/^(#{1,6})\s+(.+)$/);
+            if (hMatch) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                if (inTable) { html.push('</table>'); inTable = false; }
+                var lv = hMatch[1].length;
+                html.push('<h'+lv+'>' + fmt(hMatch[2]) + '</h'+lv+'>'); continue;
+            }
+            if (/^(---+|\*\*\*+|___+)$/.test(line.trim())) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                if (inTable) { html.push('</table>'); inTable = false; }
+                html.push('<hr>'); continue;
+            }
+            var bq = line.match(/^>\s*(.*)$/);
+            if (bq) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                if (inTable) { html.push('</table>'); inTable = false; }
+                html.push('<blockquote><p>' + fmt(bq[1]) + '</p></blockquote>'); continue;
+            }
+            if (line.trim().match(/^\|.+\|$/)) {
+                if (inList) { html.push('</ul>'); inList = false; }
+                if (line.trim().match(/^\|[\s\-:|]+\|$/)) continue;
+                if (!inTable) { html.push('<table>'); inTable = true; }
+                var cells = line.trim().replace(/^\||\|$/g,'').split('|');
+                html.push('<tr>'+cells.map(function(c){return '<td>'+fmt(c.trim())+'</td>';}).join('')+'</tr>'); continue;
+            }
+            if (inTable) { html.push('</table>'); inTable = false; }
+            var li = line.match(/^[-*+]\s+(.+)$/);
+            if (li) {
+                if (!inList) { html.push('<ul>'); inList = true; }
+                var task = li[1].match(/^\[([ x])\]\s+(.+)$/);
+                if (task) {
+                    var chk = task[1]==='x'?' checked':'';
+                    html.push('<li><input type="checkbox"'+chk+' disabled> '+fmt(task[2])+'</li>');
+                } else { html.push('<li>'+fmt(li[1])+'</li>'); }
+                continue;
+            }
+            if (inList) { html.push('</ul>'); inList = false; }
+            if (!line.trim()) { html.push(''); continue; }
+            html.push('<p>' + fmt(line) + '</p>');
+        }
+        if (inList) html.push('</ul>');
+        if (inTable) html.push('</table>');
+        var result = html.join('\n');
+        result = result.replace(/\x00IC(\d+)\x00/g, function(m,i){return inlineCodes[parseInt(i)];});
+        return result;
+    }
+    function fmt(t) {
+        return t
+            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img alt="$1" src="$2">')
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>')
+            .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+            .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+            .replace(/__(.+?)__/g,'<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g,'<em>$1</em>')
+            .replace(/_([^_]+?)_/g,'<em>$1</em>');
+    }
+
+    // Bridge
+    function sendToSwift(type, payload) {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.bridge)
+            window.webkit.messageHandlers.bridge.postMessage(JSON.stringify(Object.assign({type:type},payload||{})));
+    }
+    var handlers = {};
+    window.handleSwiftMessage = function(s) {
+        var msg = JSON.parse(s);
+        if (handlers[msg.type]) handlers[msg.type](msg);
+    };
+
+    var readerEl = document.getElementById('reader');
+    var editorEl = document.getElementById('editor');
+    var editArea = document.getElementById('editArea');
+    var toolbarEl = document.getElementById('toolbar');
+    var currentMode = 'read', currentContent = '';
+
+    function showReader(content) {
+        readerEl.textContent = '';
+        var div = document.createElement('div');
+        // Content is from local files only, rendered through our markdown parser
+        div.innerHTML = renderMarkdown(content);
+        readerEl.appendChild(div);
+        readerEl.classList.remove('hidden');
+    }
+
+    handlers['loadContent'] = function(msg) {
+        currentContent = msg.content;
+        if (currentMode === 'read') showReader(currentContent);
+        else editArea.value = currentContent;
+    };
+    handlers['setMode'] = function(msg) {
+        currentMode = msg.mode;
+        if (currentMode === 'read') {
+            if (editArea.value) currentContent = editArea.value;
+            showReader(currentContent);
+            readerEl.classList.remove('hidden');
+            editorEl.classList.add('hidden');
+            toolbarEl.classList.add('hidden');
+        } else {
+            readerEl.classList.add('hidden');
+            editorEl.classList.remove('hidden');
+            toolbarEl.classList.remove('hidden');
+            editArea.value = currentContent;
+            editArea.focus();
+        }
+    };
+    handlers['setBaseURL'] = function(msg) {
+        var b = document.querySelector('base'); if (b) b.remove();
+        b = document.createElement('base'); b.href = msg.url; document.head.prepend(b);
+    };
+    handlers['getContent'] = function() { sendToSwift('contentResult',{content:currentContent}); };
+
+    editArea.addEventListener('input', function() {
+        currentContent = editArea.value;
+        sendToSwift('contentChanged',{content:currentContent});
+    });
+    readerEl.addEventListener('dblclick', function(){sendToSwift('requestEdit');});
+    document.addEventListener('keydown', function(e) {
+        if (e.key==='Escape' && currentMode==='edit') sendToSwift('requestRead');
+    });
+    toolbarEl.addEventListener('click', function(e) {
+        var btn = e.target.closest('button'); if (!btn) return;
+        var a = btn.dataset.action, s = editArea.selectionStart, end = editArea.selectionEnd;
+        var sel = editArea.value.substring(s, end), r = sel;
+        if(a==='bold')r='**'+sel+'**'; else if(a==='italic')r='*'+sel+'*';
+        else if(a==='h1')r='# '+sel; else if(a==='h2')r='## '+sel; else if(a==='h3')r='### '+sel;
+        else if(a==='bullet')r='- '+sel; else if(a==='ordered')r='1. '+sel;
+        else if(a==='code')r='`'+sel+'`'; else if(a==='quote')r='> '+sel;
+        else if(a==='link')r='['+sel+'](url)'; else if(a==='hr')r='\n---\n';
+        editArea.setRangeText(r, s, end, 'end');
+        currentContent = editArea.value;
+        sendToSwift('contentChanged',{content:currentContent});
+    });
+
+    sendToSwift('ready');
+    </script>
 </body>
 </html>
