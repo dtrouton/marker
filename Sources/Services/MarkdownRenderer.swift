@@ -113,18 +113,15 @@ enum MarkdownRenderer {
 
     // MARK: - Fonts & Constants
 
-    private static let bodyFont = NSFont.systemFont(ofSize: 14)
-    private static let monoFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    private static var bodyFont: NSFont { ThemeManager.current.bodyFont }
+    private static var monoFont: NSFont { ThemeManager.current.monoFont }
 
     private static var paragraphBreak: NSAttributedString {
         NSAttributedString(string: "\n")
     }
 
     private static func headingFont(level: Int) -> NSFont {
-        let sizes: [CGFloat] = [28, 22, 18, 16, 15, 14]
-        let size = sizes[min(level - 1, sizes.count - 1)]
-        let weight: NSFont.Weight = level <= 2 ? .bold : .semibold
-        return NSFont.systemFont(ofSize: size, weight: weight)
+        ThemeManager.current.headingFontProvider(level)
     }
 
     // MARK: - Image Loading
@@ -155,9 +152,10 @@ enum MarkdownRenderer {
 
     private static func renderHeading(_ text: String, level: Int, baseURL: URL? = nil) -> NSAttributedString {
         let font = headingFont(level: level)
+        let theme = ThemeManager.current
         let para = NSMutableParagraphStyle()
-        para.paragraphSpacingBefore = 8
-        para.paragraphSpacing = 4
+        para.paragraphSpacingBefore = theme.paragraphSpacing
+        para.paragraphSpacing = theme.paragraphSpacing / 2
         let base: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: NSColor.labelColor,
@@ -380,7 +378,7 @@ enum MarkdownRenderer {
         for (i, row) in rows.enumerated() {
             let isHeader = (i == 0)
             let font = isHeader
-                ? NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)
+                ? NSFont.monospacedSystemFont(ofSize: monoFont.pointSize, weight: .bold)
                 : monoFont
 
             var paddedCells: [String] = []
@@ -456,9 +454,9 @@ enum MarkdownRenderer {
         // 2. Inline code: `code`
         applyPattern(attrStr, pattern: #"`([^`]+)`"#) { match, str in
             let code = (str.string as NSString).substring(with: match.range(at: 1))
-            let mono = NSFont.monospacedSystemFont(ofSize: baseFont.pointSize - 1, weight: .regular)
+            let mono = ThemeManager.current.monoFont
             return NSAttributedString(string: code, attributes: [
-                .font: mono,
+                .font: NSFont.monospacedSystemFont(ofSize: mono.pointSize - 1, weight: .regular),
                 .foregroundColor: NSColor.labelColor,
                 .backgroundColor: NSColor.quaternaryLabelColor,
             ])

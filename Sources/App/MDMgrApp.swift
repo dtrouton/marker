@@ -178,6 +178,24 @@ struct MDMgrApp: App {
                 }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
                 .disabled(appState?.activeTab == nil)
+
+                Divider()
+
+                Menu("Theme") {
+                    ForEach(ThemeManager.themes.indices, id: \.self) { index in
+                        let theme = ThemeManager.themes[index]
+                        Button {
+                            ThemeManager.select(theme)
+                            appState?.themeVersion += 1
+                        } label: {
+                            if ThemeManager.current.name == theme.name {
+                                Text("\u{2713} \(theme.name)")
+                            } else {
+                                Text("   \(theme.name)")
+                            }
+                        }
+                    }
+                }
             }
         }
     }
