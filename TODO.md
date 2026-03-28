@@ -10,11 +10,11 @@
 ## Medium Impact
 - [ ] App icon — marker pen icon for Dock/Spotlight
 - [ ] Print support (Cmd+P native print dialog)
-- [ ] Word count / reading time in status bar
-- [ ] Recent files menu (File > Open Recent)
-- [ ] Wider markdown support — footnotes, strikethrough (~~text~~), definition lists, superscript
-- [ ] Image rendering in read mode — load local images via NSTextAttachment
-- [ ] Table of contents sidebar — parse headings, clickable outline
+- [x] Word count / reading time in status bar
+- [x] Recent files menu (File > Open Recent)
+- [x] Wider markdown support — footnotes, strikethrough (~~text~~)
+- [x] Image rendering in read mode — load local images via NSTextAttachment
+- [x] Table of contents sidebar — parse headings, clickable outline (Cmd+Shift+T)
 
 ## Nice to Have
 - [ ] Multiple window support
