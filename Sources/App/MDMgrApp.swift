@@ -1,6 +1,12 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private func findPanelSender(action: NSFindPanelAction) -> NSMenuItem {
+    let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    item.tag = Int(action.rawValue)
+    return item
+}
+
 @main
 struct MDMgrApp: App {
     @State private var appState = AppState()
@@ -56,6 +62,23 @@ struct MDMgrApp: App {
             }
 
             CommandGroup(after: .textEditing) {
+                Button("Find…") {
+                    NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: findPanelSender(action: .showFindPanel))
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Button("Find Next") {
+                    NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: findPanelSender(action: .next))
+                }
+                .keyboardShortcut("g", modifiers: .command)
+
+                Button("Find Previous") {
+                    NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: findPanelSender(action: .previous))
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+
+                Divider()
+
                 Button("Find in Folder") {
                     appState.isSearching = true
                 }
