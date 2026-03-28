@@ -1,0 +1,7 @@
+MDMgr.xcodeproj/
+build/
+DerivedData/
+.superpowers/
+node_modules/
+*.xcworkspace
+.DS_Store
