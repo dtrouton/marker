@@ -19,8 +19,8 @@ enum MarkdownRenderer {
             if line.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
                 if !isFirstBlock { result.append(paragraphBreak) }
                 isFirstBlock = false
-                let lang = line.trimmingCharacters(in: .whitespaces).dropFirst(3)
-                _ = lang // language hint ignored for now
+                let lang = String(line.trimmingCharacters(in: .whitespaces).dropFirst(3))
+                    .trimmingCharacters(in: .whitespaces)
                 var codeLines: [String] = []
                 index += 1
                 while index < lines.count {
@@ -33,7 +33,7 @@ enum MarkdownRenderer {
                     index += 1
                 }
                 let codeText = codeLines.joined(separator: "\n")
-                result.append(renderCodeBlock(codeText))
+                result.append(renderCodeBlock(codeText, language: lang.isEmpty ? nil : lang))
                 continue
             }
 
@@ -139,18 +139,48 @@ enum MarkdownRenderer {
         return result
     }
 
-    private static func renderCodeBlock(_ code: String) -> NSAttributedString {
-        let para = NSMutableParagraphStyle()
-        para.headIndent = 8
-        para.firstLineHeadIndent = 8
-        para.tailIndent = -8
-        let attrs: [NSAttributedString.Key: Any] = [
+    private static func renderCodeBlock(_ code: String, language: String? = nil) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+
+        // Language label
+        if let language = language {
+            let labelPara = NSMutableParagraphStyle()
+            labelPara.headIndent = 12
+            labelPara.firstLineHeadIndent = 12
+            labelPara.paragraphSpacingBefore = 10
+            labelPara.paragraphSpacing = 2
+            let labelFont = NSFont.systemFont(ofSize: 10, weight: .medium)
+            let labelAttrs: [NSAttributedString.Key: Any] = [
+                .font: labelFont,
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .paragraphStyle: labelPara,
+            ]
+            result.append(NSAttributedString(string: language.uppercased() + "\n", attributes: labelAttrs))
+        }
+
+        let codePara = NSMutableParagraphStyle()
+        codePara.headIndent = 12
+        codePara.firstLineHeadIndent = 12
+        codePara.tailIndent = -12
+        // Extra spacing only when there is no language label above
+        codePara.paragraphSpacingBefore = language == nil ? 10 : 0
+        codePara.paragraphSpacing = 10
+
+        let bgColor: NSColor
+        if let blended = NSColor.textBackgroundColor.blended(withFraction: 0.1, of: .gray) {
+            bgColor = blended
+        } else {
+            bgColor = NSColor.controlBackgroundColor
+        }
+
+        let codeAttrs: [NSAttributedString.Key: Any] = [
             .font: monoFont,
             .foregroundColor: NSColor.labelColor,
-            .backgroundColor: NSColor.quaternaryLabelColor,
-            .paragraphStyle: para,
+            .backgroundColor: bgColor,
+            .paragraphStyle: codePara,
         ]
-        return NSAttributedString(string: code, attributes: attrs)
+        result.append(NSAttributedString(string: code, attributes: codeAttrs))
+        return result
     }
 
     private static func renderBlockquote(_ text: String) -> NSAttributedString {
