@@ -32,9 +32,19 @@ struct ContentView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
 
-                        MarkdownTextView(tab: tab, onCoordinatorReady: { coord in
-                            editorCoordinator = coord
-                        })
+                        HStack(spacing: 0) {
+                            MarkdownTextView(tab: tab, onCoordinatorReady: { coord in
+                                editorCoordinator = coord
+                            })
+
+                            if appState.showTableOfContents {
+                                Divider()
+                                TableOfContents(content: tab.content) { lineNumber in
+                                    editorCoordinator?.scrollToLine(lineNumber)
+                                }
+                                .frame(width: 220)
+                            }
+                        }
                         StatusBar(content: tab.content)
                     }
                 } else {

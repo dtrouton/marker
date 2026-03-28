@@ -220,5 +220,22 @@ struct MarkdownTextView: NSViewRepresentable {
             let urlStart = sel.location + selText.count + 2 // after "[text]("
             tv.setSelectedRange(NSRange(location: urlStart, length: 3))
         }
+
+        /// Scroll to a specific line number (zero-based)
+        func scrollToLine(_ lineNumber: Int) {
+            guard let tv = textView else { return }
+            let text = tv.string as NSString
+            var currentLine = 0
+            var charIndex = 0
+            while currentLine < lineNumber && charIndex < text.length {
+                if text.character(at: charIndex) == UInt16(UnicodeScalar("\n").value) {
+                    currentLine += 1
+                }
+                charIndex += 1
+            }
+            let range = NSRange(location: charIndex, length: 0)
+            tv.scrollRangeToVisible(range)
+            tv.setSelectedRange(range)
+        }
     }
 }

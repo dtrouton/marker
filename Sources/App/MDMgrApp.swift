@@ -138,6 +138,12 @@ struct MDMgrApp: App {
                 }
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(appState.activeTab == nil)
+
+                Button("Toggle Table of Contents") {
+                    appState.showTableOfContents.toggle()
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(appState.activeTab == nil)
             }
         }
     }
