@@ -42,7 +42,7 @@ struct ExportSheet: View {
             do {
                 switch selectedFormat {
                 case .pdf:
-                    let rendered = MarkdownRenderer.render(tab.content)
+                    let rendered = MarkdownRenderer.render(tab.content, baseURL: tab.fileURL.deletingLastPathComponent())
                     try ExportService.exportPDF(content: rendered, to: url)
                 case .html:
                     try ExportService.exportHTML(content: tab.content, to: url)

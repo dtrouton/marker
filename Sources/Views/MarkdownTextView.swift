@@ -76,7 +76,7 @@ struct MarkdownTextView: NSViewRepresentable {
         if tab.mode == .read {
             textView.isEditable = false
             textView.isSelectable = true
-            let rendered = MarkdownRenderer.render(tab.content)
+            let rendered = MarkdownRenderer.render(tab.content, baseURL: tab.fileURL.deletingLastPathComponent())
             textView.textStorage?.setAttributedString(rendered)
         } else {
             textView.isEditable = true

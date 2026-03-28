@@ -127,6 +127,30 @@ enum MarkdownRenderer {
         return NSFont.systemFont(ofSize: size, weight: weight)
     }
 
+    // MARK: - Image Loading
+
+    private static func loadImage(src: String, baseURL: URL?) -> NSImage? {
+        // Try as absolute file path
+        if src.hasPrefix("/") {
+            let fileURL = URL(fileURLWithPath: src)
+            if let image = NSImage(contentsOf: fileURL) {
+                return image
+            }
+        }
+        // Try as absolute URL (e.g. https:// or file://)
+        if let url = URL(string: src), url.scheme != nil, let image = NSImage(contentsOf: url) {
+            return image
+        }
+        // Try as relative path from baseURL
+        if let base = baseURL {
+            let resolved = base.appendingPathComponent(src)
+            if let image = NSImage(contentsOf: resolved) {
+                return image
+            }
+        }
+        return nil
+    }
+
     // MARK: - Block Renderers
 
     private static func renderHeading(_ text: String, level: Int, baseURL: URL? = nil) -> NSAttributedString {
@@ -140,7 +164,7 @@ enum MarkdownRenderer {
             .paragraphStyle: para,
         ]
         let result = NSMutableAttributedString(string: text, attributes: base)
-        applyInlineFormatting(result, baseFont: font)
+        applyInlineFormatting(result, baseFont: font, baseURL: baseURL)
         return result
     }
 
@@ -206,7 +230,7 @@ enum MarkdownRenderer {
             .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: para,
         ])
-        applyInlineFormatting(body, baseFont: bodyFont)
+        applyInlineFormatting(body, baseFont: bodyFont, baseURL: baseURL)
         result.append(body)
         return result
     }
@@ -225,7 +249,7 @@ enum MarkdownRenderer {
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
-        applyInlineFormatting(body, baseFont: bodyFont)
+        applyInlineFormatting(body, baseFont: bodyFont, baseURL: baseURL)
         let result = NSMutableAttributedString()
         result.append(bullet)
         result.append(body)
@@ -246,7 +270,7 @@ enum MarkdownRenderer {
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
-        applyInlineFormatting(body, baseFont: bodyFont)
+        applyInlineFormatting(body, baseFont: bodyFont, baseURL: baseURL)
         let result = NSMutableAttributedString()
         result.append(prefix)
         result.append(body)
@@ -268,7 +292,7 @@ enum MarkdownRenderer {
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: para,
         ])
-        applyInlineFormatting(body, baseFont: bodyFont)
+        applyInlineFormatting(body, baseFont: bodyFont, baseURL: baseURL)
         let result = NSMutableAttributedString()
         result.append(prefix)
         result.append(body)
@@ -318,7 +342,7 @@ enum MarkdownRenderer {
             .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: para,
         ])
-        applyInlineFormatting(body, baseFont: smallFont)
+        applyInlineFormatting(body, baseFont: smallFont, baseURL: baseURL)
         result.append(body)
         return result
     }
@@ -396,22 +420,37 @@ enum MarkdownRenderer {
             .font: baseFont,
             .foregroundColor: NSColor.labelColor,
         ])
-        applyInlineFormatting(result, baseFont: baseFont)
+        applyInlineFormatting(result, baseFont: baseFont, baseURL: baseURL)
         return result
     }
 
     /// Apply inline formatting patterns to a mutable attributed string.
-    /// Order: images, inline code (protect from inner matching), links, strikethrough,
-    /// footnote refs, bold+italic, bold, italic.
-    private static func applyInlineFormatting(_ attrStr: NSMutableAttributedString, baseFont: NSFont) {
-        // 1. Images: ![alt](url) → [alt]
-        applyPattern(attrStr, pattern: #"!\[([^\]]*)\]\([^\)]+\)"#) { match, str in
+    /// Order: images, inline code (protect from inner matching), links, bold+italic, bold, italic.
+    private static func applyInlineFormatting(_ attrStr: NSMutableAttributedString, baseFont: NSFont, baseURL: URL? = nil) {
+        // 1. Images: ![alt](path) → inline image or [alt] fallback
+        applyPattern(attrStr, pattern: #"!\[([^\]]*)\]\(([^\)]+)\)"#) { match, str in
             let alt = (str.string as NSString).substring(with: match.range(at: 1))
-            let replacement = NSAttributedString(string: "[\(alt)]", attributes: [
+            let src = (str.string as NSString).substring(with: match.range(at: 2))
+
+            // Try to load the image
+            if let image = loadImage(src: src, baseURL: baseURL) {
+                let attachment = NSTextAttachment()
+                // Scale image to fit within max width
+                let maxWidth: CGFloat = 600
+                if image.size.width > maxWidth {
+                    let scale = maxWidth / image.size.width
+                    let newSize = NSSize(width: image.size.width * scale, height: image.size.height * scale)
+                    attachment.bounds = CGRect(origin: .zero, size: newSize)
+                }
+                attachment.image = image
+                return NSAttributedString(attachment: attachment)
+            }
+
+            // Fallback to [alt] text
+            return NSAttributedString(string: "[\(alt)]", attributes: [
                 .font: baseFont,
                 .foregroundColor: NSColor.secondaryLabelColor,
             ])
-            return replacement
         }
 
         // 2. Inline code: `code`
