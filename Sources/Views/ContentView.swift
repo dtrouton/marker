@@ -35,7 +35,7 @@ struct ContentView: View {
                         .padding(.vertical, 4)
 
                         HStack(spacing: 0) {
-                            MarkdownTextView(tab: tab, onCoordinatorReady: { coord in
+                            MarkdownTextView(tab: tab, themeVersion: appState.themeVersion, onCoordinatorReady: { coord in
                                 editorCoordinator = coord
                             }, scrollPercentage: $scrollPercentage, visiblePercentage: $visiblePercentage)
 
