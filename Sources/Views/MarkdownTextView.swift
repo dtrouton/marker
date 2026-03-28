@@ -3,9 +3,12 @@ import AppKit
 
 struct MarkdownTextView: NSViewRepresentable {
     let tab: Tab
+    var onCoordinatorReady: ((Coordinator) -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(tab: tab)
+        let coord = Coordinator(tab: tab)
+        DispatchQueue.main.async { onCoordinatorReady?(coord) }
+        return coord
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -110,6 +113,91 @@ struct MarkdownTextView: NSViewRepresentable {
                 storage.endEditing()
                 textView.setSelectedRange(sel)
             }
+        }
+
+        // MARK: - Toolbar Actions
+
+        /// Toggle wrap: if selection is wrapped with prefix/suffix, remove; otherwise add.
+        func toggleWrap(prefix: String, suffix: String) {
+            guard let tv = textView else { return }
+            let text = tv.string as NSString
+            let sel = tv.selectedRange()
+
+            // Check if text around selection is the wrapper
+            let beforeStart = sel.location - prefix.count
+            let afterEnd = sel.location + sel.length
+            if beforeStart >= 0 && afterEnd + suffix.count <= text.length {
+                let before = text.substring(with: NSRange(location: beforeStart, length: prefix.count))
+                let after = text.substring(with: NSRange(location: afterEnd, length: suffix.count))
+                if before == prefix && after == suffix {
+                    // Remove wrapping
+                    let fullRange = NSRange(location: beforeStart, length: sel.length + prefix.count + suffix.count)
+                    let inner = text.substring(with: sel)
+                    tv.insertText(inner, replacementRange: fullRange)
+                    tv.setSelectedRange(NSRange(location: beforeStart, length: sel.length))
+                    return
+                }
+            }
+
+            // Check if selection itself contains the wrappers
+            if sel.length >= prefix.count + suffix.count {
+                let selText = text.substring(with: sel)
+                if selText.hasPrefix(prefix) && selText.hasSuffix(suffix) {
+                    let innerStart = selText.index(selText.startIndex, offsetBy: prefix.count)
+                    let innerEnd = selText.index(selText.endIndex, offsetBy: -suffix.count)
+                    let inner = String(selText[innerStart..<innerEnd])
+                    tv.insertText(inner, replacementRange: sel)
+                    tv.setSelectedRange(NSRange(location: sel.location, length: inner.count))
+                    return
+                }
+            }
+
+            // Add wrapping
+            let selText = text.substring(with: sel)
+            let replacement = prefix + selText + suffix
+            tv.insertText(replacement, replacementRange: sel)
+            tv.setSelectedRange(NSRange(location: sel.location + prefix.count, length: sel.length))
+        }
+
+        /// Toggle line prefix: if current line starts with prefix, remove; otherwise add.
+        func toggleLinePrefix(_ prefix: String) {
+            guard let tv = textView else { return }
+            let text = tv.string as NSString
+            let sel = tv.selectedRange()
+
+            // Find line start
+            let lineStart = text.lineRange(for: NSRange(location: sel.location, length: 0)).location
+            let lineRange = text.lineRange(for: NSRange(location: sel.location, length: 0))
+            let line = text.substring(with: lineRange)
+
+            if line.hasPrefix(prefix) {
+                // Remove prefix
+                let prefixRange = NSRange(location: lineStart, length: prefix.count)
+                tv.insertText("", replacementRange: prefixRange)
+            } else {
+                // Add prefix
+                tv.insertText(prefix, replacementRange: NSRange(location: lineStart, length: 0))
+            }
+        }
+
+        /// Insert text at cursor position
+        func insertAtCursor(_ text: String) {
+            guard let tv = textView else { return }
+            let sel = tv.selectedRange()
+            tv.insertText(text, replacementRange: sel)
+        }
+
+        /// Insert link wrapping selection as the link text
+        func insertLink() {
+            guard let tv = textView else { return }
+            let text = tv.string as NSString
+            let sel = tv.selectedRange()
+            let selText = sel.length > 0 ? text.substring(with: sel) : "text"
+            let replacement = "[\(selText)](url)"
+            tv.insertText(replacement, replacementRange: sel)
+            // Select "url" for easy replacement
+            let urlStart = sel.location + selText.count + 2 // after "[text]("
+            tv.setSelectedRange(NSRange(location: urlStart, length: 3))
         }
     }
 }

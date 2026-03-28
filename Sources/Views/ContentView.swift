@@ -4,6 +4,7 @@ struct ContentView: View {
     @Bindable var appState: AppState
     @State private var tabToClose: Int?
     @State private var showUnsavedAlert = false
+    @State private var editorCoordinator: MarkdownTextView.Coordinator?
 
     var body: some View {
         NavigationSplitView {
@@ -18,7 +19,10 @@ struct ContentView: View {
                     TabBarView(appState: appState, onClose: handleTabClose)
                     Divider()
                     if let tab = appState.activeTab {
-                        HStack {
+                        HStack(spacing: 4) {
+                            if tab.mode == .edit {
+                                EditToolbar(coordinator: editorCoordinator)
+                            }
                             Spacer()
                             Button(tab.mode == .read ? "Edit" : "Done") {
                                 tab.mode = tab.mode == .read ? .edit : .read
@@ -28,7 +32,9 @@ struct ContentView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
 
-                        MarkdownTextView(tab: tab)
+                        MarkdownTextView(tab: tab, onCoordinatorReady: { coord in
+                            editorCoordinator = coord
+                        })
                     }
                 } else {
                     ContentUnavailableView {
