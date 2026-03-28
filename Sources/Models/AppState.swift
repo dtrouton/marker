@@ -3,6 +3,8 @@ import SwiftUI
 @Observable
 final class AppState {
     var tabs: [Tab] = []
+    @ObservationIgnored
+    private var autoSaveTimer: Timer?
     var activeTabIndex: Int = 0 {
         didSet { saveTabs() }
     }
@@ -20,6 +22,22 @@ final class AppState {
     var activeTab: Tab? {
         guard !tabs.isEmpty, activeTabIndex >= 0, activeTabIndex < tabs.count else { return nil }
         return tabs[activeTabIndex]
+    }
+
+    init() {
+        startAutoSave()
+    }
+
+    func startAutoSave() {
+        autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.autoSaveDirtyTabs()
+        }
+    }
+
+    private func autoSaveDirtyTabs() {
+        for tab in tabs where tab.isDirty {
+            saveTab(tab)
+        }
     }
 
     func openTab(fileURL: URL, content: String) {
