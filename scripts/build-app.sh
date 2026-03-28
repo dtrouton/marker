@@ -1,11 +1,11 @@
 #!/bin/bash
-# Build MD Mgr.app bundle from swift build output
+# Build Marker.app bundle from swift build output
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_DIR/.build/release"
-APP_DIR="$PROJECT_DIR/build/MD Mgr.app"
+APP_DIR="$PROJECT_DIR/build/Marker.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 
 echo "Building release..."
@@ -18,12 +18,12 @@ mkdir -p "$CONTENTS_DIR/MacOS"
 mkdir -p "$CONTENTS_DIR/Resources"
 
 # Copy binary
-cp "$BUILD_DIR/MDMgr" "$CONTENTS_DIR/MacOS/MD Mgr"
+cp "$BUILD_DIR/MDMgr" "$CONTENTS_DIR/MacOS/Marker"
 
 # Copy Info.plist and resolve Xcode build variables for SPM
 sed \
-    -e 's/$(EXECUTABLE_NAME)/MD Mgr/g' \
-    -e 's/$(PRODUCT_BUNDLE_IDENTIFIER)/com.mdmgr.app/g' \
+    -e 's/$(EXECUTABLE_NAME)/Marker/g' \
+    -e 's/$(PRODUCT_BUNDLE_IDENTIFIER)/com.marker.app/g' \
     -e 's/$(CURRENT_PROJECT_VERSION)/1/g' \
     -e 's/$(MARKETING_VERSION)/1.0.0/g' \
     -e 's/$(MACOSX_DEPLOYMENT_TARGET)/14.0/g' \

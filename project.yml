@@ -16,8 +16,8 @@ targets:
       - path: Resources
     settings:
       base:
-        PRODUCT_NAME: MD Mgr
-        PRODUCT_BUNDLE_IDENTIFIER: com.mdmgr.app
+        PRODUCT_NAME: Marker
+        PRODUCT_BUNDLE_IDENTIFIER: com.marker.app
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         INFOPLIST_FILE: Sources/App/Info.plist
@@ -38,4 +38,4 @@ targets:
       base:
         SWIFT_VERSION: "5.10"
         BUNDLE_LOADER: "$(TEST_HOST)"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MD Mgr.app/Contents/MacOS/MD Mgr"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Marker.app/Contents/MacOS/Marker"
