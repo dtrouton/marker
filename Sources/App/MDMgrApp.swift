@@ -9,18 +9,19 @@ private func findPanelSender(action: NSFindPanelAction) -> NSMenuItem {
 
 @main
 struct MDMgrApp: App {
-    @State private var appState = AppState()
+    @FocusedValue(\.appState) var appState
 
     var body: some Scene {
         WindowGroup {
-            ContentView(appState: appState)
+            ContentView()
                 .onOpenURL { url in
-                    appState.openFile(at: url)
+                    appState?.openFile(at: url)
                 }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Open File...") {
+                    guard let appState else { return }
                     let panel = NSOpenPanel()
                     panel.allowedContentTypes = [.plainText]
                     panel.allowsMultipleSelection = true
@@ -33,6 +34,7 @@ struct MDMgrApp: App {
                 .keyboardShortcut("o", modifiers: .command)
 
                 Button("Open Folder...") {
+                    guard let appState else { return }
                     let panel = NSOpenPanel()
                     panel.canChooseFiles = false
                     panel.canChooseDirectories = true
@@ -49,12 +51,12 @@ struct MDMgrApp: App {
 
             CommandGroup(after: .newItem) {
                 Menu("Recent Files") {
-                    ForEach(appState.recentFiles, id: \.path) { url in
+                    ForEach(appState?.recentFiles ?? [], id: \.path) { url in
                         Button(url.lastPathComponent) {
-                            appState.openFile(at: url)
+                            appState?.openFile(at: url)
                         }
                     }
-                    if !appState.recentFiles.isEmpty {
+                    if !(appState?.recentFiles.isEmpty ?? true) {
                         Divider()
                         Button("Clear Recent Files") {
                             UserDefaults.standard.removeObject(forKey: "recentFiles")
@@ -65,21 +67,21 @@ struct MDMgrApp: App {
 
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
-                    appState.saveActiveTab()
+                    appState?.saveActiveTab()
                 }
                 .keyboardShortcut("s", modifiers: .command)
-                .disabled(appState.activeTab == nil || !(appState.activeTab?.isDirty ?? false))
+                .disabled(appState?.activeTab == nil || !(appState?.activeTab?.isDirty ?? false))
 
                 Button("Export…") {
-                    appState.showExportSheet = true
+                    appState?.showExportSheet = true
                 }
                 .keyboardShortcut("e", modifiers: .command)
-                .disabled(appState.activeTab == nil)
+                .disabled(appState?.activeTab == nil)
 
                 Divider()
 
                 Button("Print…") {
-                    guard let tab = appState.activeTab else { return }
+                    guard let tab = appState?.activeTab else { return }
                     let rendered = MarkdownRenderer.render(
                         tab.content,
                         baseURL: tab.fileURL.deletingLastPathComponent()
@@ -101,15 +103,15 @@ struct MDMgrApp: App {
                     printOp.run()
                 }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
-                .disabled(appState.activeTab == nil)
+                .disabled(appState?.activeTab == nil)
             }
 
             CommandGroup(before: .textEditing) {
                 Button("Quick Open") {
-                    appState.showQuickOpen = true
+                    appState?.showQuickOpen = true
                 }
                 .keyboardShortcut("p", modifiers: .command)
-                .disabled(appState.folderURL == nil)
+                .disabled(appState?.folderURL == nil)
             }
 
             CommandGroup(after: .textEditing) {
@@ -131,27 +133,26 @@ struct MDMgrApp: App {
                 Divider()
 
                 Button("Find in Folder") {
-                    appState.isSearching = true
+                    appState?.isSearching = true
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
             }
 
             CommandGroup(after: .windowArrangement) {
                 Button("Next Tab") {
-                    if !appState.tabs.isEmpty {
-                        appState.activeTabIndex = (appState.activeTabIndex + 1) % appState.tabs.count
-                    }
+                    guard let appState, !appState.tabs.isEmpty else { return }
+                    appState.activeTabIndex = (appState.activeTabIndex + 1) % appState.tabs.count
                 }
                 .keyboardShortcut("]", modifiers: [.command, .shift])
 
                 Button("Previous Tab") {
-                    if !appState.tabs.isEmpty {
-                        appState.activeTabIndex = (appState.activeTabIndex - 1 + appState.tabs.count) % appState.tabs.count
-                    }
+                    guard let appState, !appState.tabs.isEmpty else { return }
+                    appState.activeTabIndex = (appState.activeTabIndex - 1 + appState.tabs.count) % appState.tabs.count
                 }
                 .keyboardShortcut("[", modifiers: [.command, .shift])
 
                 Button("Close Tab") {
+                    guard let appState else { return }
                     appState.closeTab(at: appState.activeTabIndex)
                 }
                 .keyboardShortcut("w", modifiers: .command)
@@ -159,18 +160,24 @@ struct MDMgrApp: App {
                 Divider()
 
                 Button("Toggle Edit Mode") {
-                    if let tab = appState.activeTab {
+                    if let tab = appState?.activeTab {
                         tab.mode = tab.mode == .read ? .edit : .read
                     }
                 }
                 .keyboardShortcut(.return, modifiers: .command)
-                .disabled(appState.activeTab == nil)
+                .disabled(appState?.activeTab == nil)
 
                 Button("Toggle Table of Contents") {
-                    appState.showTableOfContents.toggle()
+                    appState?.showTableOfContents.toggle()
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
-                .disabled(appState.activeTab == nil)
+                .disabled(appState?.activeTab == nil)
+
+                Button("Toggle Minimap") {
+                    appState?.showMinimap.toggle()
+                }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(appState?.activeTab == nil)
             }
         }
     }

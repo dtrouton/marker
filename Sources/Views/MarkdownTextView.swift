@@ -4,9 +4,11 @@ import AppKit
 struct MarkdownTextView: NSViewRepresentable {
     let tab: Tab
     var onCoordinatorReady: ((Coordinator) -> Void)?
+    @Binding var scrollPercentage: CGFloat
+    @Binding var visiblePercentage: CGFloat
 
     func makeCoordinator() -> Coordinator {
-        let coord = Coordinator(tab: tab)
+        let coord = Coordinator(tab: tab, scrollPercentage: $scrollPercentage, visiblePercentage: $visiblePercentage)
         DispatchQueue.main.async { onCoordinatorReady?(coord) }
         return coord
     }
@@ -38,6 +40,15 @@ struct MarkdownTextView: NSViewRepresentable {
 
         scrollView.documentView = textView
         applyContent(to: textView, tab: tab)
+
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+        context.coordinator.scrollView = scrollView
 
         return scrollView
     }
@@ -106,15 +117,53 @@ struct MarkdownTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var tab: Tab
         weak var textView: NSTextView?
+        weak var scrollView: NSScrollView?
         var lastMode: TabMode?
         var lastContent: String?
         var isLocalEdit = false
         private var highlightTimer: Timer?
+        private var scrollPercentageBinding: Binding<CGFloat>
+        private var visiblePercentageBinding: Binding<CGFloat>
 
-        init(tab: Tab) {
+        init(tab: Tab, scrollPercentage: Binding<CGFloat>, visiblePercentage: Binding<CGFloat>) {
             self.tab = tab
             self.lastMode = tab.mode
             self.lastContent = tab.content
+            self.scrollPercentageBinding = scrollPercentage
+            self.visiblePercentageBinding = visiblePercentage
+        }
+
+        @objc func scrollViewDidScroll(_ notification: Notification) {
+            guard let sv = scrollView,
+                  let docView = sv.documentView else { return }
+            let contentHeight = docView.frame.height
+            let visibleHeight = sv.contentView.bounds.height
+            let scrollOffset = sv.contentView.bounds.origin.y
+            let scrollable = contentHeight - visibleHeight
+            guard scrollable > 0 else {
+                scrollPercentageBinding.wrappedValue = 0
+                visiblePercentageBinding.wrappedValue = 1
+                return
+            }
+            scrollPercentageBinding.wrappedValue = scrollOffset / contentHeight
+            visiblePercentageBinding.wrappedValue = visibleHeight / contentHeight
+        }
+
+        func scrollToPercentage(_ percentage: CGFloat) {
+            guard let sv = scrollView,
+                  let docView = sv.documentView else { return }
+            let contentHeight = docView.frame.height
+            let visibleHeight = sv.contentView.bounds.height
+            // Center the visible area on the clicked position
+            let targetOffset = percentage * contentHeight - visibleHeight / 2
+            let maxOffset = contentHeight - visibleHeight
+            let clampedOffset = min(max(targetOffset, 0), maxOffset)
+            sv.contentView.scroll(to: NSPoint(x: 0, y: clampedOffset))
+            sv.reflectScrolledClipView(sv.contentView)
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
         }
 
         func textDidChange(_ notification: Notification) {

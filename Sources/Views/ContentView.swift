@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Bindable var appState: AppState
+    @State private var appState = AppState()
     @State private var tabToClose: Int?
     @State private var showUnsavedAlert = false
     @State private var editorCoordinator: MarkdownTextView.Coordinator?
+    @State private var scrollPercentage: CGFloat = 0
+    @State private var visiblePercentage: CGFloat = 1
 
     var body: some View {
         NavigationSplitView {
@@ -35,7 +37,19 @@ struct ContentView: View {
                         HStack(spacing: 0) {
                             MarkdownTextView(tab: tab, onCoordinatorReady: { coord in
                                 editorCoordinator = coord
-                            })
+                            }, scrollPercentage: $scrollPercentage, visiblePercentage: $visiblePercentage)
+
+                            if appState.showMinimap {
+                                Divider()
+                                MinimapView(
+                                    content: tab.content,
+                                    visiblePercentage: visiblePercentage,
+                                    scrollPercentage: scrollPercentage,
+                                    onScroll: { percentage in
+                                        editorCoordinator?.scrollToPercentage(percentage)
+                                    }
+                                )
+                            }
 
                             if appState.showTableOfContents {
                                 Divider()
@@ -57,6 +71,7 @@ struct ContentView: View {
                 }
             }
         }
+        .focusedSceneValue(\.appState, appState)
         .frame(minWidth: 700, minHeight: 500)
         .onAppear { restoreLastFolder() }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in

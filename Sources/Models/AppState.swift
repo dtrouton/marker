@@ -1,5 +1,20 @@
 import SwiftUI
 
+// MARK: - Focused Value for Multi-Window Support
+
+struct FocusedAppStateKey: FocusedValueKey {
+    typealias Value = AppState
+}
+
+extension FocusedValues {
+    var appState: AppState? {
+        get { self[FocusedAppStateKey.self] }
+        set { self[FocusedAppStateKey.self] = newValue }
+    }
+}
+
+// MARK: - App State
+
 @Observable
 final class AppState {
     var tabs: [Tab] = []
@@ -15,6 +30,8 @@ final class AppState {
     var showExportSheet: Bool = false
     var showQuickOpen: Bool = false
     var showTableOfContents: Bool = false
+    var showMinimap: Bool = false
+    var themeVersion: Int = 0
     var gitStatus: [URL: GitFileStatus] = [:]
 
     @ObservationIgnored
