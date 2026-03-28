@@ -277,6 +277,7 @@ enum MarkdownRenderer {
             let rowText = cells.joined(separator: "  │  ")
             let attrs: [NSAttributedString.Key: Any] = [
                 .font: font,
+                .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: para,
             ]
             if !result.string.isEmpty { result.append(NSAttributedString(string: "\n")) }
