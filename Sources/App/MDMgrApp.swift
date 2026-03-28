@@ -81,6 +81,16 @@ struct MDMgrApp: App {
                     appState.closeTab(at: appState.activeTabIndex)
                 }
                 .keyboardShortcut("w", modifiers: .command)
+
+                Divider()
+
+                Button("Toggle Edit Mode") {
+                    if let tab = appState.activeTab {
+                        tab.mode = tab.mode == .read ? .edit : .read
+                    }
+                }
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(appState.activeTab == nil)
             }
         }
     }
