@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Bindable var appState: AppState
+    @State private var watcher: FileWatcher?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +31,20 @@ struct SidebarView: View {
             }
         }
         .frame(minWidth: 200)
+        .onChange(of: appState.folderURL) { _, newURL in
+            watcher?.stop()
+            guard let url = newURL else { return }
+            let state = appState
+            watcher = FileWatcher(url: url) {
+                do {
+                    state.fileTree = try FileTreeLoader.load(directory: url, markdownOnly: true)
+                } catch {}
+            }
+            watcher?.start()
+        }
+        .onDisappear {
+            watcher?.stop()
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: openFolder) {
