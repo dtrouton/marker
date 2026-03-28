@@ -33,4 +33,18 @@ sed \
 echo -n "APPL????" > "$CONTENTS_DIR/PkgInfo"
 
 echo "Built: $APP_DIR"
-echo "Run with: open \"$APP_DIR\""
+
+# Install to /Applications if --install flag passed
+if [ "${1:-}" = "--install" ]; then
+    echo "Installing to /Applications..."
+    killall "Marker" 2>/dev/null || true
+    sleep 1
+    rm -rf /Applications/Marker.app
+    cp -R "$APP_DIR" /Applications/Marker.app
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Marker.app
+    echo "Installed to /Applications/Marker.app"
+    open /Applications/Marker.app
+else
+    echo "Run with: open \"$APP_DIR\""
+    echo "Install with: $0 --install"
+fi
