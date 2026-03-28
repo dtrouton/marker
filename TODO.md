@@ -1,15 +1,15 @@
 # Marker — TODO
 
 ## High Impact
-- [ ] Cmd+F find in document — highlight matches, cycle through with Cmd+G / Cmd+Shift+G
-- [ ] Remember open tabs across launches — persist tab list + active tab to UserDefaults
-- [ ] Cmd+P quick open — fuzzy file finder within the open folder
-- [ ] Scroll position preserved on mode switch — don't jump to top when toggling read/edit
-- [ ] Better code block rendering — subtle border/rounded rect background, language label
+- [x] Cmd+F find in document — highlight matches, cycle through with Cmd+G / Cmd+Shift+G
+- [x] Remember open tabs across launches — persist tab list + active tab to UserDefaults
+- [x] Cmd+P quick open — fuzzy file finder within the open folder
+- [x] Scroll position preserved on mode switch — don't jump to top when toggling read/edit
+- [x] Better code block rendering — subtle border/rounded rect background, language label
 
 ## Medium Impact
-- [ ] App icon — marker pen icon for Dock/Spotlight
-- [ ] Print support (Cmd+P native print dialog)
+- [x] App icon — blue marker pen with markdown hash symbol
+- [x] Print support (Cmd+Shift+P)
 - [x] Word count / reading time in status bar
 - [x] Recent files menu (File > Open Recent)
 - [x] Wider markdown support — footnotes, strikethrough (~~text~~)
@@ -19,7 +19,7 @@
 ## Nice to Have
 - [ ] Multiple window support
 - [ ] Minimap scroll overview
-- [ ] Git status indicators in sidebar
-- [ ] Auto-save dirty tabs periodically
+- [x] Git status indicators in sidebar (M/A/? with colors)
+- [x] Auto-save dirty tabs every 30 seconds
 - [ ] Custom CSS theme for read mode
 - [ ] Quick Look plugin for .md files in Finder
