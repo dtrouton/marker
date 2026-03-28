@@ -4,7 +4,7 @@ enum MarkdownRenderer {
 
     // MARK: - Public API
 
-    static func render(_ markdown: String) -> NSAttributedString {
+    static func render(_ markdown: String, baseURL: URL? = nil) -> NSAttributedString {
         guard !markdown.isEmpty else { return NSAttributedString() }
 
         let result = NSMutableAttributedString()
@@ -49,7 +49,7 @@ enum MarkdownRenderer {
 
             // --- Heading ---
             if let heading = parseHeading(line) {
-                result.append(renderHeading(heading.text, level: heading.level))
+                result.append(renderHeading(heading.text, level: heading.level, baseURL: baseURL))
             }
             // --- Horizontal rule ---
             else if isHorizontalRule(line) {
@@ -64,7 +64,7 @@ enum MarkdownRenderer {
                     quoteLines.append(stripped)
                     qi += 1
                 }
-                result.append(renderBlockquote(quoteLines.joined(separator: "\n")))
+                result.append(renderBlockquote(quoteLines.joined(separator: "\n"), baseURL: baseURL))
                 index = qi
                 continue
             }
@@ -72,16 +72,16 @@ enum MarkdownRenderer {
             else if isTaskListItem(line) {
                 let checked = line.contains("- [x]") || line.contains("- [X]")
                 let text = extractTaskListText(line)
-                result.append(renderTaskListItem(text, checked: checked))
+                result.append(renderTaskListItem(text, checked: checked, baseURL: baseURL))
             }
             // --- Unordered list ---
             else if isUnorderedListItem(line) {
                 let text = extractUnorderedListText(line)
-                result.append(renderUnorderedListItem(text))
+                result.append(renderUnorderedListItem(text, baseURL: baseURL))
             }
             // --- Ordered list ---
             else if let olMatch = parseOrderedListItem(line) {
-                result.append(renderOrderedListItem(olMatch.text, number: olMatch.number))
+                result.append(renderOrderedListItem(olMatch.text, number: olMatch.number, baseURL: baseURL))
             }
             // --- Table ---
             else if line.contains("|") && index + 1 < lines.count && isTableSeparator(lines[index + 1]) {
@@ -95,9 +95,14 @@ enum MarkdownRenderer {
                 index = ti
                 continue
             }
+            // --- Footnote definition: [^label]: text ---
+            else if isFootnoteDefinition(line) {
+                let parsed = parseFootnoteDefinition(line)
+                result.append(renderFootnoteDefinition(label: parsed.label, text: parsed.text, baseURL: baseURL))
+            }
             // --- Plain paragraph ---
             else {
-                result.append(renderInline(line, baseFont: bodyFont))
+                result.append(renderInline(line, baseFont: bodyFont, baseURL: baseURL))
             }
 
             index += 1
@@ -124,7 +129,7 @@ enum MarkdownRenderer {
 
     // MARK: - Block Renderers
 
-    private static func renderHeading(_ text: String, level: Int) -> NSAttributedString {
+    private static func renderHeading(_ text: String, level: Int, baseURL: URL? = nil) -> NSAttributedString {
         let font = headingFont(level: level)
         let para = NSMutableParagraphStyle()
         para.paragraphSpacingBefore = 8
@@ -183,7 +188,7 @@ enum MarkdownRenderer {
         return result
     }
 
-    private static func renderBlockquote(_ text: String) -> NSAttributedString {
+    private static func renderBlockquote(_ text: String, baseURL: URL? = nil) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.headIndent = 24
         para.firstLineHeadIndent = 12
@@ -206,7 +211,7 @@ enum MarkdownRenderer {
         return result
     }
 
-    private static func renderUnorderedListItem(_ text: String) -> NSAttributedString {
+    private static func renderUnorderedListItem(_ text: String, baseURL: URL? = nil) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.headIndent = 20
         para.firstLineHeadIndent = 4
@@ -227,7 +232,7 @@ enum MarkdownRenderer {
         return result
     }
 
-    private static func renderOrderedListItem(_ text: String, number: Int) -> NSAttributedString {
+    private static func renderOrderedListItem(_ text: String, number: Int, baseURL: URL? = nil) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.headIndent = 24
         para.firstLineHeadIndent = 4
@@ -248,7 +253,7 @@ enum MarkdownRenderer {
         return result
     }
 
-    private static func renderTaskListItem(_ text: String, checked: Bool) -> NSAttributedString {
+    private static func renderTaskListItem(_ text: String, checked: Bool, baseURL: URL? = nil) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.headIndent = 24
         para.firstLineHeadIndent = 4
@@ -281,6 +286,41 @@ enum MarkdownRenderer {
             .foregroundColor: NSColor.separatorColor,
             .paragraphStyle: para,
         ])
+    }
+
+    private static func renderFootnoteDefinition(label: String, text: String, baseURL: URL? = nil) -> NSAttributedString {
+        let para = NSMutableParagraphStyle()
+        para.headIndent = 24
+        para.firstLineHeadIndent = 8
+        para.paragraphSpacingBefore = 2
+        para.paragraphSpacing = 2
+
+        let smallFont = NSFont.systemFont(ofSize: bodyFont.pointSize * 0.85)
+        let labelFont = NSFont.systemFont(ofSize: bodyFont.pointSize * 0.75)
+
+        let result = NSMutableAttributedString()
+
+        // Superscript label
+        let labelStr = NSAttributedString(string: label, attributes: [
+            .font: labelFont,
+            .foregroundColor: NSColor.linkColor,
+            .superscript: 1,
+            .paragraphStyle: para,
+        ])
+        result.append(labelStr)
+
+        // Separator
+        result.append(NSAttributedString(string: " ", attributes: [.font: smallFont, .paragraphStyle: para]))
+
+        // Body text
+        let body = NSMutableAttributedString(string: text, attributes: [
+            .font: smallFont,
+            .foregroundColor: NSColor.secondaryLabelColor,
+            .paragraphStyle: para,
+        ])
+        applyInlineFormatting(body, baseFont: smallFont)
+        result.append(body)
+        return result
     }
 
     private static func renderTable(_ lines: [String]) -> NSAttributedString {
@@ -351,7 +391,7 @@ enum MarkdownRenderer {
 
     // MARK: - Inline Rendering
 
-    private static func renderInline(_ text: String, baseFont: NSFont) -> NSAttributedString {
+    private static func renderInline(_ text: String, baseFont: NSFont, baseURL: URL? = nil) -> NSAttributedString {
         let result = NSMutableAttributedString(string: text, attributes: [
             .font: baseFont,
             .foregroundColor: NSColor.labelColor,
@@ -361,7 +401,8 @@ enum MarkdownRenderer {
     }
 
     /// Apply inline formatting patterns to a mutable attributed string.
-    /// Order: images, inline code (protect from inner matching), links, bold+italic, bold, italic.
+    /// Order: images, inline code (protect from inner matching), links, strikethrough,
+    /// footnote refs, bold+italic, bold, italic.
     private static func applyInlineFormatting(_ attrStr: NSMutableAttributedString, baseFont: NSFont) {
         // 1. Images: ![alt](url) → [alt]
         applyPattern(attrStr, pattern: #"!\[([^\]]*)\]\([^\)]+\)"#) { match, str in
@@ -397,7 +438,31 @@ enum MarkdownRenderer {
             return result
         }
 
-        // 4. Bold+Italic: ***text*** or ___text___
+        // 4. Strikethrough: ~~text~~
+        applyPattern(attrStr, pattern: #"~~(.+?)~~"#) { match, str in
+            let inner = (str.string as NSString).substring(with: match.range(at: 1))
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: baseFont,
+                .foregroundColor: NSColor.labelColor,
+                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                .strikethroughColor: NSColor.labelColor,
+            ]
+            return NSAttributedString(string: inner, attributes: attrs)
+        }
+
+        // 5. Footnote references: [^1], [^note], etc. → superscript number/label
+        applyPattern(attrStr, pattern: #"\[\^([^\]]+)\](?!:)"#) { match, str in
+            let label = (str.string as NSString).substring(with: match.range(at: 1))
+            let smallFont = NSFont.systemFont(ofSize: baseFont.pointSize * 0.75)
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: smallFont,
+                .foregroundColor: NSColor.linkColor,
+                .superscript: 1,
+            ]
+            return NSAttributedString(string: label, attributes: attrs)
+        }
+
+        // 6. Bold+Italic: ***text*** or ___text___
         applyPattern(attrStr, pattern: #"\*\*\*(.+?)\*\*\*"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             var font = baseFont
@@ -413,7 +478,7 @@ enum MarkdownRenderer {
             return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
 
-        // 5. Bold: **text** or __text__
+        // 7. Bold: **text** or __text__
         applyPattern(attrStr, pattern: #"\*\*(.+?)\*\*"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             let font = NSFontManager.shared.convert(baseFont, toHaveTrait: .boldFontMask)
@@ -425,7 +490,7 @@ enum MarkdownRenderer {
             return NSAttributedString(string: inner, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
         }
 
-        // 6. Italic: *text* or _text_ — must NOT match inside ** or __
+        // 8. Italic: *text* or _text_ — must NOT match inside ** or __
         applyPattern(attrStr, pattern: #"(?<!\*)\*([^*]+?)\*(?!\*)"#) { match, str in
             let inner = (str.string as NSString).substring(with: match.range(at: 1))
             let font = NSFontManager.shared.convert(baseFont, toHaveTrait: .italicFontMask)
@@ -511,6 +576,23 @@ enum MarkdownRenderer {
         let afterDot = trimmed[trimmed.index(after: dotIndex)...]
         guard afterDot.first == " " else { return nil }
         return (num, String(afterDot.dropFirst()))
+    }
+
+    private static func isFootnoteDefinition(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        return trimmed.range(of: #"^\[\^[^\]]+\]:"#, options: .regularExpression) != nil
+    }
+
+    private static func parseFootnoteDefinition(_ line: String) -> (label: String, text: String) {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard let regex = try? NSRegularExpression(pattern: #"^\[\^([^\]]+)\]:\s*(.*)"#),
+              let match = regex.firstMatch(in: trimmed, range: NSRange(location: 0, length: (trimmed as NSString).length))
+        else {
+            return ("", trimmed)
+        }
+        let label = (trimmed as NSString).substring(with: match.range(at: 1))
+        let text = (trimmed as NSString).substring(with: match.range(at: 2))
+        return (label, text)
     }
 
     private static func isTableSeparator(_ line: String) -> Bool {

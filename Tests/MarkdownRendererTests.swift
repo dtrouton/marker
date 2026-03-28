@@ -144,6 +144,103 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertEqual(text(result), "")
     }
 
+    // MARK: - Strikethrough
+
+    func testStrikethroughRendersWithStrikethroughStyle() {
+        let result = MarkdownRenderer.render("Hello ~~removed~~ world")
+        let rendered = text(result)
+        guard let range = rendered.range(of: "removed") else {
+            XCTFail("Expected 'removed' in output")
+            return
+        }
+        let nsRange = NSRange(range, in: rendered)
+        let style = result.attribute(.strikethroughStyle, at: nsRange.location, effectiveRange: nil) as? Int
+        XCTAssertNotNil(style)
+        XCTAssertEqual(style, NSUnderlineStyle.single.rawValue)
+    }
+
+    func testStrikethroughStripsMarkers() {
+        let result = MarkdownRenderer.render("Hello ~~removed~~ world")
+        let rendered = text(result)
+        XCTAssertFalse(rendered.contains("~~"))
+        XCTAssertTrue(rendered.contains("removed"))
+    }
+
+    func testStrikethroughHasStrikethroughColor() {
+        let result = MarkdownRenderer.render("~~gone~~")
+        let rendered = text(result)
+        guard let range = rendered.range(of: "gone") else {
+            XCTFail("Expected 'gone' in output")
+            return
+        }
+        let nsRange = NSRange(range, in: rendered)
+        let color = result.attribute(.strikethroughColor, at: nsRange.location, effectiveRange: nil) as? NSColor
+        XCTAssertNotNil(color)
+    }
+
+    // MARK: - Footnote references
+
+    func testFootnoteReferenceRendersAsSuperscript() {
+        let result = MarkdownRenderer.render("See this[^1] for details")
+        let rendered = text(result)
+        guard let range = rendered.range(of: "1") else {
+            XCTFail("Expected '1' in output")
+            return
+        }
+        let nsRange = NSRange(range, in: rendered)
+        let sup = result.attribute(.superscript, at: nsRange.location, effectiveRange: nil) as? Int
+        XCTAssertEqual(sup, 1)
+    }
+
+    func testFootnoteReferenceStripsMarkers() {
+        let result = MarkdownRenderer.render("Text[^1] here")
+        let rendered = text(result)
+        XCTAssertFalse(rendered.contains("[^"))
+        XCTAssertFalse(rendered.contains("]"))
+        XCTAssertTrue(rendered.contains("1"))
+    }
+
+    func testFootnoteReferenceUsesLinkColor() {
+        let result = MarkdownRenderer.render("Text[^1] here")
+        let rendered = text(result)
+        guard let range = rendered.range(of: "1") else {
+            XCTFail("Expected '1' in output")
+            return
+        }
+        let nsRange = NSRange(range, in: rendered)
+        let color = result.attribute(.foregroundColor, at: nsRange.location, effectiveRange: nil) as? NSColor
+        XCTAssertEqual(color, NSColor.linkColor)
+    }
+
+    // MARK: - Footnote definitions
+
+    func testFootnoteDefinitionRendersSmallFont() {
+        let result = MarkdownRenderer.render("[^1]: This is a footnote")
+        let rendered = text(result)
+        XCTAssertTrue(rendered.contains("This is a footnote"))
+        // Find the body text and check the font is smaller than body
+        guard let range = rendered.range(of: "This is a footnote") else {
+            XCTFail("Expected footnote text in output")
+            return
+        }
+        let nsRange = NSRange(range, in: rendered)
+        let f = font(result, at: nsRange.location)
+        XCTAssertNotNil(f)
+        XCTAssertLessThan(f!.pointSize, 14) // smaller than body font
+    }
+
+    func testFootnoteDefinitionLabelIsSuperscript() {
+        let result = MarkdownRenderer.render("[^1]: Footnote text")
+        let rendered = text(result)
+        guard let range = rendered.range(of: "1") else {
+            XCTFail("Expected '1' in output")
+            return
+        }
+        let nsRange = NSRange(range, in: rendered)
+        let sup = result.attribute(.superscript, at: nsRange.location, effectiveRange: nil) as? Int
+        XCTAssertEqual(sup, 1)
+    }
+
     // MARK: - Plain text
 
     func testPlainTextPassesThrough() {

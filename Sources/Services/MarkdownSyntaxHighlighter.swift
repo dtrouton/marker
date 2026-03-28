@@ -10,6 +10,8 @@ enum MarkdownSyntaxHighlighter {
     private static var listColor: NSColor { .systemOrange }
     private static var quoteColor: NSColor { .secondaryLabelColor }
     private static var hrColor: NSColor { .separatorColor }
+    private static var strikethroughColor: NSColor { .systemGray }
+    private static var footnoteColor: NSColor { .systemTeal }
 
     private static let editorFont = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     private static let editorBoldFont = NSFont.monospacedSystemFont(ofSize: 14, weight: .bold)
@@ -89,7 +91,12 @@ enum MarkdownSyntaxHighlighter {
                 textStorage.addAttribute(.font, value: editorBoldFont, range: adjusted)
             }
 
-            // Inline: code, bold, italic, links
+            // Footnote definitions: [^label]: text
+            if line.trimmingCharacters(in: .whitespaces).range(of: #"^\[\^[^\]]+\]:"#, options: .regularExpression) != nil {
+                textStorage.addAttribute(.foregroundColor, value: footnoteColor, range: lineRange)
+            }
+
+            // Inline: code, bold, italic, links, strikethrough, footnotes
             applyInlineHighlights(textStorage, lineText: line, lineStart: lineStart)
 
             lineStart += line.count + 1
@@ -115,6 +122,15 @@ enum MarkdownSyntaxHighlighter {
         // Links
         applyRegex(textStorage, pattern: #"\[([^\]]+)\]\(([^)]+)\)"#, in: nsLine, lineStart: lineStart,
                    attrs: [.foregroundColor: linkColor])
+
+        // Strikethrough
+        applyRegex(textStorage, pattern: #"~~(.+?)~~"#, in: nsLine, lineStart: lineStart,
+                   attrs: [.foregroundColor: strikethroughColor,
+                           .strikethroughStyle: NSUnderlineStyle.single.rawValue])
+
+        // Footnote references: [^label] (not followed by colon)
+        applyRegex(textStorage, pattern: #"\[\^[^\]]+\](?!:)"#, in: nsLine, lineStart: lineStart,
+                   attrs: [.foregroundColor: footnoteColor])
     }
 
     private static func applyRegex(
