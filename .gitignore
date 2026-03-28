@@ -1,7 +1,9 @@
 MDMgr.xcodeproj/
 build/
+.build/
 DerivedData/
 .superpowers/
 node_modules/
 *.xcworkspace
 .DS_Store
+.swiftpm/
