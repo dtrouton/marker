@@ -91,7 +91,7 @@ enum MarkdownRenderer {
                     tableLines.append(lines[ti])
                     ti += 1
                 }
-                result.append(renderTable(tableLines))
+                result.append(renderTable(tableLines, baseURL: baseURL))
                 index = ti
                 continue
             }
@@ -345,67 +345,81 @@ enum MarkdownRenderer {
         return result
     }
 
-    private static func renderTable(_ lines: [String]) -> NSAttributedString {
+    private static func parseTableCells(_ line: String) -> [String] {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        var cells: [String] = []
+        var cell = ""
+        var escaped = false
+        for character in trimmed {
+            if escaped {
+                if character != "|" { cell.append("\\") }
+                cell.append(character)
+                escaped = false
+            } else if character == "\\" {
+                escaped = true
+            } else if character == "|" {
+                cells.append(cell.trimmingCharacters(in: .whitespaces))
+                cell = ""
+            } else {
+                cell.append(character)
+            }
+        }
+        if escaped { cell.append("\\") }
+        cells.append(cell.trimmingCharacters(in: .whitespaces))
+        if trimmed.hasPrefix("|") { cells.removeFirst() }
+        if trimmed.hasSuffix("|"), cells.last == "" { cells.removeLast() }
+        return cells
+    }
+
+    private static func renderTable(_ lines: [String], baseURL: URL?) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        let para = NSMutableParagraphStyle()
-        para.paragraphSpacing = 2
+        guard lines.count >= 2 else { return result }
+        let headers = parseTableCells(lines[0])
+        let separators = parseTableCells(lines[1])
+        let columnCount = headers.count
+        guard columnCount > 0 else { return result }
 
-        func parseCells(_ line: String) -> [String] {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let stripped = trimmed.hasPrefix("|") ? String(trimmed.dropFirst()) : trimmed
-            let stripped2 = stripped.hasSuffix("|") ? String(stripped.dropLast()) : stripped
-            return stripped2.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
-        }
+        // Native text table cells reflow independently when the reader resizes.
+        let table = NSTextTable()
+        table.numberOfColumns = columnCount
+        table.layoutAlgorithm = .fixedLayoutAlgorithm
+        table.collapsesBorders = true
+        table.setContentWidth(100, type: .percentageValueType)
 
-        // Parse all data rows (skip separators)
-        var rows: [[String]] = []
-        for line in lines {
-            if isTableSeparator(line) { continue }
-            rows.append(parseCells(line))
-        }
-        guard !rows.isEmpty else { return result }
+        let rows = [headers] + lines.dropFirst(2).map { parseTableCells($0) }
+        for (rowIndex, row) in rows.enumerated() {
+            let isHeader = rowIndex == 0
+            let font = isHeader ? NSFontManager.shared.convert(bodyFont, toHaveTrait: .boldFontMask) : bodyFont
+            for column in 0..<columnCount {
+                let block = NSTextTableBlock(table: table, startingRow: rowIndex, rowSpan: 1,
+                                             startingColumn: column, columnSpan: 1)
+                block.setContentWidth(100 / CGFloat(columnCount), type: .percentageValueType)
+                block.setWidth(8, type: .absoluteValueType, for: .padding)
+                block.setWidth(0.5, type: .absoluteValueType, for: .border)
+                block.setBorderColor(.separatorColor)
+                block.verticalAlignment = .top
+                if isHeader { block.backgroundColor = .quaternaryLabelColor }
 
-        // Calculate column widths
-        let colCount = rows.map(\.count).max() ?? 0
-        var widths = Array(repeating: 0, count: colCount)
-        for row in rows {
-            for (j, cell) in row.enumerated() where j < colCount {
-                widths[j] = max(widths[j], cell.count)
-            }
-        }
-
-        // Render rows with padded columns
-        for (i, row) in rows.enumerated() {
-            let isHeader = (i == 0)
-            let font = isHeader
-                ? NSFont.monospacedSystemFont(ofSize: monoFont.pointSize, weight: .bold)
-                : monoFont
-
-            var paddedCells: [String] = []
-            for j in 0..<colCount {
-                let cell = j < row.count ? row[j] : ""
-                paddedCells.append(cell.padding(toLength: widths[j], withPad: " ", startingAt: 0))
-            }
-            let rowText = paddedCells.joined(separator: "  │  ")
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: font,
-                .foregroundColor: NSColor.labelColor,
-                .paragraphStyle: para,
-            ]
-            if !result.string.isEmpty { result.append(NSAttributedString(string: "\n")) }
-            result.append(NSAttributedString(string: rowText, attributes: attrs))
-
-            // Add separator line after header
-            if isHeader {
-                let sepParts = widths.map { String(repeating: "─", count: $0) }
-                let sepText = sepParts.joined(separator: "──┼──")
-                let sepAttrs: [NSAttributedString.Key: Any] = [
-                    .font: monoFont,
-                    .foregroundColor: NSColor.separatorColor,
-                    .paragraphStyle: para,
-                ]
-                result.append(NSAttributedString(string: "\n"))
-                result.append(NSAttributedString(string: sepText, attributes: sepAttrs))
+                let paragraph = NSMutableParagraphStyle()
+                paragraph.textBlocks = [block]
+                paragraph.lineBreakMode = .byWordWrapping
+                if column < separators.count {
+                    let marker = separators[column]
+                    if marker.hasPrefix(":"), marker.hasSuffix(":") {
+                        paragraph.alignment = .center
+                    } else if marker.hasSuffix(":") {
+                        paragraph.alignment = .right
+                    }
+                }
+                let cell = NSMutableAttributedString(attributedString: renderInline(
+                    column < row.count ? row[column] : "", baseFont: font, baseURL: baseURL))
+                // Each cell must end its own paragraph, including the final cell.
+                cell.append(NSAttributedString(string: "\n", attributes: [
+                    .font: font, .foregroundColor: NSColor.labelColor
+                ]))
+                cell.addAttribute(.paragraphStyle, value: paragraph,
+                                  range: NSRange(location: 0, length: cell.length))
+                result.append(cell)
             }
         }
         return result

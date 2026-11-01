@@ -11,6 +11,84 @@ final class MarkdownRendererTests: XCTestCase {
         `as`.attribute(.font, at: pos, effectiveRange: nil) as? NSFont
     }
 
+    // MARK: - Tables
+
+    func testTableUsesSeparateCellsWithAlignmentAndInlineFormatting() throws {
+        let result = MarkdownRenderer.render("""
+        | Signal | Measurement | Value |
+        | :--- | :---: | ---: |
+        | **Growth** | [Source](https://example.com) | 42 |
+
+        After table
+        """)
+        var blocks: [NSTextTableBlock] = []
+        var alignments: [NSTextAlignment] = []
+        result.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: result.length)) { value, _, _ in
+            guard let style = value as? NSParagraphStyle,
+                  let block = style.textBlocks.first as? NSTextTableBlock else { return }
+            blocks.append(block)
+            alignments.append(style.alignment)
+        }
+        XCTAssertEqual(blocks.count, 6)
+        XCTAssertEqual(blocks.map(\.startingRow), [0, 0, 0, 1, 1, 1])
+        XCTAssertEqual(blocks.map(\.startingColumn), [0, 1, 2, 0, 1, 2])
+        XCTAssertTrue(blocks.allSatisfy { $0.table === blocks[0].table })
+        XCTAssertEqual(alignments, [.natural, .center, .right, .natural, .center, .right])
+        let growth = (result.string as NSString).range(of: "Growth").location
+        XCTAssertTrue(NSFontManager.shared.traits(of: try XCTUnwrap(font(result, at: growth))).contains(.boldFontMask))
+        let source = (result.string as NSString).range(of: "Source").location
+        XCTAssertNotNil(result.attribute(.link, at: source, effectiveRange: nil))
+        let after = (result.string as NSString).range(of: "After table").location
+        let afterStyle = result.attribute(.paragraphStyle, at: after, effectiveRange: nil) as? NSParagraphStyle
+        XCTAssertTrue(afterStyle?.textBlocks.isEmpty ?? true)
+        XCTAssertFalse(result.string.contains("│"))
+    }
+
+    func testTablePreservesEscapedPipesAndEmptyCells() {
+        let result = MarkdownRenderer.render("""
+        | Name | Value |
+        | --- | --- |
+        | A\\|B | |
+        | C | 3 |
+        """)
+        XCTAssertEqual(result.string, "Name\nValue\nA|B\n\nC\n3\n")
+    }
+
+    func testLongTableCellsWrapWithinColumnsWhenResized() {
+        let result = MarkdownRenderer.render("""
+        | Signal | Proposed measurement | Source | Limitation |
+        | --- | --- | --- | --- |
+        | Sustained capture | Markup trend; risk-adjusted return on invested capital against cost of capital | Published competition research, company accounts, relevant regulators | Accounting comparability, intangibles, fixed costs and selection |
+        | Entry response | Births and new operating capacity following attractive returns or unmet demand | ONS business demography, establishment registers | Registration is not capacity; acquisitions are not entry |
+        """)
+        let storage = NSTextStorage(attributedString: result)
+        let manager = NSLayoutManager()
+        let container = NSTextContainer(size: NSSize(width: 900, height: CGFloat.greatestFiniteMagnitude))
+        storage.addLayoutManager(manager)
+        manager.addTextContainer(container)
+        var previousHeight: CGFloat = 0
+        for width: CGFloat in [900, 480] {
+            container.containerSize.width = width
+            manager.ensureLayout(for: container)
+            let used = manager.usedRect(for: container)
+            XCTAssertLessThanOrEqual(used.maxX, width + 1)
+            XCTAssertGreaterThan(used.height, previousHeight)
+            previousHeight = used.height
+            func rect(_ text: String) -> NSRect {
+                let range = (result.string as NSString).range(of: text)
+                return manager.boundingRect(forGlyphRange: manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil), in: container)
+            }
+            let first = rect("Sustained capture")
+            let measurement = rect("Markup trend; risk-adjusted return on invested capital against cost of capital")
+            let source = rect("Published competition research, company accounts, relevant regulators")
+            let limitation = rect("Accounting comparability, intangibles, fixed costs and selection")
+            XCTAssertLessThan(first.maxX, measurement.minX)
+            XCTAssertLessThan(measurement.maxX, source.minX)
+            XCTAssertLessThan(source.maxX, limitation.minX)
+            XCTAssertGreaterThan(rect("Entry response").minY, max(measurement.maxY, limitation.maxY))
+        }
+    }
+
     // MARK: - Headings
 
     func testH1RendersLargeBoldFont() {
