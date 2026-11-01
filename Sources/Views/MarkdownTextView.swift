@@ -15,26 +15,8 @@ struct MarkdownTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.drawsBackground = false
-
-        let textView = NSTextView()
-        textView.isRichText = true
-        textView.allowsUndo = true
-        textView.usesFontPanel = false
-        textView.isAutomaticLinkDetectionEnabled = true
-        textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.usesFindBar = true
-        textView.textContainerInset = NSSize(width: 32, height: 24)
-        textView.drawsBackground = false
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        let scrollView = Self.makeScrollView()
+        let textView = scrollView.documentView as! NSTextView
 
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
@@ -51,6 +33,41 @@ struct MarkdownTextView: NSViewRepresentable {
         )
         context.coordinator.scrollView = scrollView
 
+        return scrollView
+    }
+
+    // Build the same TextKit 1 stack used by the renderer's native table cells.
+    // Give it a real initial width and track the viewport as SwiftUI sizes it.
+    static func makeScrollView() -> NSScrollView {
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+
+        let storage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        let container = NSTextContainer(size: NSSize(width: scrollView.contentSize.width,
+                                                     height: CGFloat.greatestFiniteMagnitude))
+        storage.addLayoutManager(layoutManager)
+        layoutManager.addTextContainer(container)
+        let textView = NSTextView(frame: NSRect(origin: .zero, size: scrollView.contentSize),
+                                  textContainer: container)
+        textView.isRichText = true
+        textView.allowsUndo = true
+        textView.usesFontPanel = false
+        textView.isAutomaticLinkDetectionEnabled = true
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.usesFindBar = true
+        textView.textContainerInset = NSSize(width: 32, height: 24)
+        textView.drawsBackground = false
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.minSize = .zero
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        container.widthTracksTextView = true
+        scrollView.documentView = textView
         return scrollView
     }
 

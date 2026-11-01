@@ -89,6 +89,36 @@ final class MarkdownRendererTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testReaderViewLaysOutTextAndTablesInItsViewport() throws {
+        let scrollView = MarkdownTextView.makeScrollView()
+        let textView = try XCTUnwrap(scrollView.documentView as? NSTextView)
+        let container = try XCTUnwrap(textView.textContainer)
+        let manager = try XCTUnwrap(textView.layoutManager)
+        textView.textStorage?.setAttributedString(MarkdownRenderer.render("""
+        # Visible heading
+
+        | Signal | Measurement |
+        | --- | --- |
+        | Growth | New operating capacity following attractive returns or unmet demand |
+
+        Visible paragraph after the table.
+        """))
+        for width: CGFloat in [1000, 480] {
+            scrollView.setFrameSize(NSSize(width: width, height: 400))
+            scrollView.layoutSubtreeIfNeeded()
+            manager.ensureLayout(for: container)
+            XCTAssertGreaterThan(container.containerSize.width, 300)
+            XCTAssertEqual(textView.frame.width, scrollView.contentSize.width, accuracy: 1)
+            let range = manager.glyphRange(for: container)
+            XCTAssertEqual(range.length, manager.numberOfGlyphs)
+            let rect = manager.usedRect(for: container)
+            XCTAssertGreaterThan(rect.width, 100)
+            XCTAssertGreaterThan(rect.height, 50)
+            XCTAssertLessThanOrEqual(rect.maxX, width)
+        }
+    }
+
     // MARK: - Headings
 
     func testH1RendersLargeBoldFont() {
